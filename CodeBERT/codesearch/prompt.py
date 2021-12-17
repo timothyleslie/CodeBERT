@@ -18,6 +18,7 @@ import argparse
 import glob
 import logging
 import os
+import sys
 import random
 
 
@@ -35,22 +36,21 @@ from transformers import (WEIGHTS_NAME, get_linear_schedule_with_warmup, AdamW,
                           RobertaTokenizer)
 
 from utils import (compute_metrics, convert_examples_to_features,
-                        output_modes, processors, mytemplate)
+                        output_modes, processors)
 
+from openprompt.prompts import ManualTemplate
 from openprompt.prompts import ManualVerbalizer
 from openprompt import PromptForClassification
+from openprompt.plms import MLMTokenizerWrapper
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+classes = ["0", "1"]
+
 logger = logging.getLogger(__name__)
 
 MODEL_CLASSES = {'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer)}
 
-myverbalizer = ManualVerbalizer(
-        classes = classes,
-        label_words = {
-            "0": ["irrelevant"],
-            "1": ["relevant"],
-        },
-        tokenizer = tokenizer,
-    )
+
 def set_seed(args):
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -452,8 +452,8 @@ def main():
     # Setup CUDA, GPU & distributed training
     if args.local_rank == -1 or args.no_cuda:
         device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
-        args.n_gpu = torch.cuda.device_count()
-        # args.n_gpu = 1
+        # args.n_gpu = torch.cuda.device_count()
+        args.n_gpu = 1
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)
         device = torch.device("cuda", args.local_rank)
@@ -479,6 +479,7 @@ def main():
     label_list = processor.get_labels()
     num_labels = len(label_list)
 
+    
     # Load pretrained model and tokenizer
     if args.local_rank not in [-1, 0]:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
@@ -508,7 +509,26 @@ def main():
         tokenizer_name = args.tokenizer_name
     elif args.model_name_or_path:
         tokenizer_name = 'roberta-base'
-    tokenizer = tokenizer_class.from_pretrained(tokenizer_name, do_lower_case=args.do_lower_case)
+
+    vocab = os.path.join(args.output_dir, 'vocab.json')
+    if os.path.exists(vocab):
+        tokenizer = tokenizer_class.from_pretrained(args.output_dir)
+    else:
+        tokenizer = tokenizer_class.from_pretrained(tokenizer_name, do_lower_case=args.do_lower_case)
+
+    # define template and verbalizer
+    template_text = 'Code: {"placeholder":"text_a", "shortenable":True} Query: {"placeholder":"text_b", "shortenable":True} They are {"mask"}.'
+    mytemplate = ManualTemplate(tokenizer=tokenizer, text=template_text)
+    wrapped_mlmTokenizer = MLMTokenizerWrapper(max_seq_length=200, tokenizer=tokenizer, truncate_method="tail")
+    myverbalizer = ManualVerbalizer(
+        classes = classes,
+        label_words = {
+            "0": ["irrelevant"],
+            "1": ["relevant"],
+        },
+        tokenizer = tokenizer,
+    )
+
     model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path),
                                         config=config)
 
@@ -517,6 +537,7 @@ def main():
 
 
     ################## combine prompt and model ################
+    
     model = PromptForClassification(plm=model, template=mytemplate, verbalizer=myverbalizer, freeze_plm=False)
     # Distributed and parallel training
     model.to(args.device)
@@ -530,9 +551,9 @@ def main():
     ]
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
 
-    optimizer_last = os.path.join(checkpoint_last, 'optimizer.pt')
-    if os.path.exists(optimizer_last):
-        optimizer.load_state_dict(torch.load(optimizer_last))
+    # optimizer_last = os.path.join(checkpoint_last, 'optimizer.pt')
+    # if os.path.exists(optimizer_last):
+    #     optimizer.load_state_dict(torch.load(optimizer_last))
 
     if args.fp16:
         try:

@@ -34,9 +34,7 @@ from openprompt.plms import MLMTokenizerWrapper
 
 
 # template
-template_text = 'Code: {"placeholder":"text_a", "shortenable":False} Query: {"placeholder":"text_b", "shortenable":False} They are {"mask"}.'
-mytemplate = ManualTemplate(tokenizer=tokenizer, text=template_text)
-wrapped_mlmTokenizer = MLMTokenizerWrapper(max_seq_length=200, tokenizer=tokenizer, truncate_method="tail")
+
 # class InputExample(object):
 #     """A single training/test example for simple sequence classification."""
 
@@ -270,6 +268,9 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
     
     label_map = {label: i for i, label in enumerate(label_list)}
 
+    template_text = 'Code: {"placeholder":"text_a", "shortenable":True} Query: {"placeholder":"text_b", "shortenable":True} They are {"mask"}.'
+    mytemplate = ManualTemplate(tokenizer=tokenizer, text=template_text)
+    wrapped_mlmTokenizer = MLMTokenizerWrapper(max_seq_length=200, tokenizer=tokenizer, truncate_method="tail")
     
     
     features = []
@@ -281,7 +282,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
         wrapped_example = mytemplate.wrap_one_example(example)
         tokenized_example = wrapped_mlmTokenizer.tokenize_one_example(wrapped_example, teacher_forcing=False)
         input_mask = list(tokenized_example['attention_mask'])
-        segment_ids = [0]*len(input_ids)
+        segment_ids = [0]*len(tokenized_example['input_ids'])
 
 
 
@@ -348,7 +349,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
         #     input_mask = input_mask + ([0 if mask_padding_with_zero else 1] * padding_length)
         #     segment_ids = segment_ids + ([pad_token_segment_id] * padding_length)
 
-        assert len(input_ids) == max_seq_length
+        assert len(tokenized_example['input_ids']) == max_seq_length
         assert len(input_mask) == max_seq_length
         assert len(segment_ids) == max_seq_length
 
@@ -362,15 +363,15 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
         if ex_index < 5:
             logger.info("*** Example ***")
             logger.info("guid: %s" % (example.guid))
-            logger.info("tokens: %s" % " ".join(
-                [str(x) for x in tokens]))
-            logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+            # logger.info("tokens: %s" % " ".join(
+            #     [str(x) for x in tokens]))
+            logger.info("input_ids: %s" % " ".join([str(x) for x in tokenized_example['input_ids']]))
             logger.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
             logger.info("segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
             logger.info("label: %s (id = %d)" % (example.label, label_id))
 
         features.append(
-            InputFeatures(input_ids=input_ids,
+            InputFeatures(input_ids=tokenized_example['input_ids'],
                           input_mask=input_mask,
                           segment_ids=segment_ids,
                           label_id=label_id))

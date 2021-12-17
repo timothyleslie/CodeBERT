@@ -47,7 +47,8 @@ python run_classifier.py \
 --model_name_or_path $pretrained_model
 ```
 
-python test.py \
+python prompt.py \
+--model_type roberta \
 --task_name codesearch \
 --do_train \
 --do_eval \
@@ -58,10 +59,10 @@ python test.py \
 --per_gpu_train_batch_size 32 \
 --per_gpu_eval_batch_size 32 \
 --learning_rate 1e-5 \
---num_train_epochs 8 \
+--num_train_epochs 1 \
 --gradient_accumulation_steps 1 \
 --overwrite_output_dir \
---data_dir ../data/codesearch/train_valid/$lang \
+--data_dir ../data/codesearch0/train_valid/$lang \
 --output_dir ./models/$lang  \
 --model_name_or_path $pretrained_model
 ## Inference and Evaluation
@@ -88,13 +89,13 @@ python run_classifier.py \
 --test_result_dir ./results/$lang/${idx}_batch_result.txt
 ```
 
-python test.py \
+python prompt.py \
 --model_type roberta \
 --model_name_or_path microsoft/codebert-base \
 --task_name codesearch \
 --do_predict \
 --output_dir ./models/$lang \
---data_dir ../data/codesearch/test/$lang \
+--data_dir ../data/codesearch0/test/$lang \
 --max_seq_length 200 \
 --per_gpu_train_batch_size 32 \
 --per_gpu_eval_batch_size 32 \
