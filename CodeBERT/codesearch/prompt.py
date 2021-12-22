@@ -32,7 +32,7 @@ from tqdm import tqdm, trange
 
 from transformers import (WEIGHTS_NAME, get_linear_schedule_with_warmup, AdamW,
                           RobertaConfig,
-                          RobertaForSequenceClassification,
+                          RobertaForMaskedLM,
                           RobertaTokenizer)
 
 from utils import (compute_metrics, convert_examples_to_features,
@@ -48,8 +48,9 @@ classes = ["0", "1"]
 
 logger = logging.getLogger(__name__)
 
-MODEL_CLASSES = {'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer)}
+MODEL_CLASSES = {'roberta': (RobertaConfig, RobertaForMaskedLM, RobertaTokenizer)}
 
+loss_func = torch.nn.CrossEntropyLoss()
 
 def set_seed(args):
     random.seed(args.seed)
@@ -99,6 +100,8 @@ def train(args, train_dataset, model, tokenizer, optimizer):
     train_iterator = trange(args.start_epoch, int(args.num_train_epochs), desc="Epoch",
                             disable=args.local_rank not in [-1, 0])
     set_seed(args)  # Added here for reproductibility (even between python 2 and 3)
+
+    
     model.train()
     for idx, _ in enumerate(train_iterator):
         tr_loss = 0.0
@@ -108,10 +111,11 @@ def train(args, train_dataset, model, tokenizer, optimizer):
             inputs = {'input_ids': batch[0],
                       'attention_mask': batch[1],
                       'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None,
-                      # XLM don't use segment_ids
-                      'labels': batch[3]}
-            ouputs = model(**inputs)
-            loss = ouputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+                      'loss_ids': batch[3]
+            }
+            labels = batch[4]
+            logits = model(inputs)
+            loss = loss_func(logits, labels)  # model outputs are always tuple in pytorch-transformers (see doc)
 
             if args.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu parallel training
@@ -241,21 +245,22 @@ def evaluate(args, model, tokenizer, checkpoint=None, prefix="", mode='dev'):
                           'attention_mask': batch[1],
                           'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None,
                           # XLM don't use segment_ids
-                          'labels': batch[3]}
+                          'loss_ids': batch[3]}
+                labels = batch[4]
 
-                outputs = model(**inputs)
-                tmp_eval_loss, logits = outputs[:2]
+                logits = model(inputs)
+                tmp_eval_loss = loss_func(logits, labels)
 
                 eval_loss += tmp_eval_loss.mean().item()
             nb_eval_steps += 1
             if preds is None:
                 preds = logits.detach().cpu().numpy()
-                out_label_ids = inputs['labels'].detach().cpu().numpy()
+                out_label_ids = labels.detach().cpu().numpy()
             else:
 
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
 
-                out_label_ids = np.append(out_label_ids, inputs['labels'].detach().cpu().numpy(), axis=0)
+                out_label_ids = np.append(out_label_ids, labels.detach().cpu().numpy(), axis=0)
         # eval_accuracy = accuracy(preds,out_label_ids)
         eval_loss = eval_loss / nb_eval_steps
         if args.output_mode == "classification":
@@ -338,6 +343,7 @@ def load_and_cache_examples(args, task, tokenizer, ttype='train'):
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
     all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
     all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
+    all_loss_ids = torch.tensor([f.loss_ids for f in features], dtype=torch.long)
     if output_mode == "classification":
         all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.long)
 
@@ -504,8 +510,8 @@ def main():
 
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
-    config = config_class.from_pretrained(args.config_name if args.config_name else args.model_name_or_path,
-                                          num_labels=num_labels, finetuning_task=args.task_name)
+    config = config_class.from_pretrained(args.config_name if args.config_name else args.model_name_or_path)
+
     if args.tokenizer_name:
         tokenizer_name = args.tokenizer_name
     elif args.model_name_or_path:
@@ -546,9 +552,9 @@ def main():
     # Prepare optimizer and schedule (linear warmup and decay)
     no_decay = ['bias', 'LayerNorm.weight']
     optimizer_grouped_parameters = [
-        {'params': [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+        {'params': [p for n, p in p_model.named_parameters() if not any(nd in n for nd in no_decay)],
          'weight_decay': args.weight_decay},
-        {'params': [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+        {'params': [p for n, p in p_model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
     ]
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
 
@@ -561,13 +567,13 @@ def main():
             from apex import amp
         except ImportError:
             raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
-        model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
+        p_model, optimizer = amp.initialize(p_model, optimizer, opt_level=args.fp16_opt_level)
 
     if args.n_gpu > 1:
-        model = torch.nn.DataParallel(model)
+        p_model = torch.nn.DataParallel(p_model)
 
     if args.local_rank != -1:
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
+        p_model = torch.nn.parallel.DistributedDataParallel(p_model, device_ids=[args.local_rank],
                                                           output_device=args.local_rank,
                                                           find_unused_parameters=True)
 
@@ -576,6 +582,7 @@ def main():
     # Training
     if args.do_train:
         train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, ttype='train')
+        sys.exit()
         global_step, tr_loss = train(args, train_dataset, p_model, tokenizer, optimizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
@@ -615,16 +622,18 @@ def main():
             print(checkpoint)
             global_step = checkpoint.split('-')[-1] if len(checkpoints) > 1 else ""
             model = model_class.from_pretrained(checkpoint)
-            model.to(args.device)
-            result = evaluate(args, model, tokenizer, checkpoint=checkpoint, prefix=global_step)
+            p_model = PromptForClassification(plm=model, template=mytemplate, verbalizer=myverbalizer, freeze_plm=False)
+            p_model.to(args.device)
+            result = evaluate(args, p_model, tokenizer, checkpoint=checkpoint, prefix=global_step)
             result = dict((k + '_{}'.format(global_step), v) for k, v in result.items())
             results.update(result)
 
     if args.do_predict:
         print('testing')
         model = model_class.from_pretrained(args.pred_model_dir)
-        model.to(args.device)
-        evaluate(args, model, tokenizer, checkpoint=None, prefix='', mode='test')
+        p_model = PromptForClassification(plm=model, template=mytemplate, verbalizer=myverbalizer, freeze_plm=False)
+        p_model.to(args.device)
+        evaluate(args, p_model, tokenizer, checkpoint=None, prefix='', mode='test')
     return results
 
 

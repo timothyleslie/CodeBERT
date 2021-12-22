@@ -251,22 +251,40 @@ def main():
     
     train_dataloader = DataLoader(train_dataset,batch_size=64)
     
-    for step, batch in enumerate(train_dataloader):
-        batch = tuple(t.to(args.device) for t in batch)
-        inputs = {'input_ids': batch[0],
-                'attention_mask': batch[1],
-                'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None,
-                'loss_ids': batch[3]}
-        
-        labels = batch[4]
-        # print(inputs)
+    no_decay = ['bias', 'LayerNorm.weight']
+    # it's always good practice to set no decay to biase and LayerNorm parameters
+    optimizer_grouped_parameters = [
+        {'params': [p for n, p in p_model.named_parameters() if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
+        {'params': [p for n, p in p_model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+    ]
+    optimizer = AdamW(optimizer_grouped_parameters, lr=1e-4)
 
-        inputs_batch = {'input_ids': batch[0],
-                'attention_mask': batch[1],
-                'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None
-                }
-        outputs = model(**inputs_batch)
-        print(outputs)
+    for epoch in range(10):
+        tot_loss = 0
+        for step, batch in enumerate(train_dataloader):
+            batch = tuple(t.to(args.device) for t in batch)
+            inputs = {'input_ids': batch[0],
+                    'attention_mask': batch[1],
+                    'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None,
+                    'loss_ids': batch[3]}
+            
+            labels = batch[4]
+            # print(inputs)
+
+            # inputs_batch = {'input_ids': batch[0],
+            #         'attention_mask': batch[1],
+            #         'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None
+            #         }
+            logits = p_model(inputs)
+            print(labels)
+            print(logits)
+            # loss = loss_func(logits, labels)
+            # loss.backward()
+            # tot_loss += loss.item()
+            # optimizer.step()
+            # optimizer.zero_grad()
+        print("Epoch {}, average loss: {}".format(epoch, tot_loss/(step+1)), flush=True)
+        # print(outputs)
         # outputs = outputs.logits
         # print(inputs['loss_ids'].size()) # [64,200]
         # print(outputs.size()) # [64, 200, 50265]
