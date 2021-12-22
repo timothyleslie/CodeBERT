@@ -459,6 +459,7 @@ def main():
         device = torch.device("cuda", args.local_rank)
         torch.distributed.init_process_group(backend='nccl')
         args.n_gpu = 1
+    # device = "cpu"
     args.device = device
 
     # Setup logging
@@ -538,9 +539,9 @@ def main():
 
     ################## combine prompt and model ################
     
-    model = PromptForClassification(plm=model, template=mytemplate, verbalizer=myverbalizer, freeze_plm=False)
+    p_model = PromptForClassification(plm=model, template=mytemplate, verbalizer=myverbalizer, freeze_plm=False)
     # Distributed and parallel training
-    model.to(args.device)
+    p_model.to(args.device)
 
     # Prepare optimizer and schedule (linear warmup and decay)
     no_decay = ['bias', 'LayerNorm.weight']
@@ -575,10 +576,11 @@ def main():
     # Training
     if args.do_train:
         train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, ttype='train')
-        global_step, tr_loss = train(args, train_dataset, model, tokenizer, optimizer)
+        global_step, tr_loss = train(args, train_dataset, p_model, tokenizer, optimizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
     # Saving best-practices: if you use defaults names for the model, you can reload it using from_pretrained()
+    model = p_model.plm()
     if args.do_train and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
         # Create output directory if needed
         if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:

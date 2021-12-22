@@ -59,10 +59,11 @@ from openprompt.plms import MLMTokenizerWrapper
 class InputFeatures(object):
     """A single set of features of data."""
 
-    def __init__(self, input_ids, input_mask, segment_ids, label_id):
+    def __init__(self, input_ids, input_mask, segment_ids, loss_ids, label_id):
         self.input_ids = input_ids
         self.input_mask = input_mask
         self.segment_ids = segment_ids
+        self.loss_ids = loss_ids
         self.label_id = label_id
 
 
@@ -352,6 +353,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
         assert len(tokenized_example['input_ids']) == max_seq_length
         assert len(input_mask) == max_seq_length
         assert len(segment_ids) == max_seq_length
+        assert len(tokenized_example['loss_ids']) == max_seq_length
 
         if output_mode == "classification":
             label_id = label_map[example.label]
@@ -368,12 +370,14 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
             logger.info("input_ids: %s" % " ".join([str(x) for x in tokenized_example['input_ids']]))
             logger.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
             logger.info("segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
+            logger.info("loss_ids: %s" % " ".join([str(x) for x in tokenized_example['loss_ids']]))
             logger.info("label: %s (id = %d)" % (example.label, label_id))
 
         features.append(
             InputFeatures(input_ids=tokenized_example['input_ids'],
                           input_mask=input_mask,
                           segment_ids=segment_ids,
+                          loss_ids=tokenized_example['loss_ids'],
                           label_id=label_id))
     return features
 
