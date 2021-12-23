@@ -43,7 +43,7 @@ from openprompt.prompts import ManualVerbalizer
 from openprompt import PromptForClassification
 from openprompt.plms import MLMTokenizerWrapper
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 classes = ["0", "1"]
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 
-def train(args, train_dataset, model, tokenizer, optimizer):
+def train(args, train_dataset, prompt_model, tokenizer, optimizer):
     """ Train the model """
     if args.local_rank in [-1, 0]:
         tb_writer = SummaryWriter()
@@ -96,25 +96,26 @@ def train(args, train_dataset, model, tokenizer, optimizer):
     global_step = args.start_step
     tr_loss, logging_loss = 0.0, 0.0
     best_acc = 0.0
-    model.zero_grad()
+    prompt_model.zero_grad()
     train_iterator = trange(args.start_epoch, int(args.num_train_epochs), desc="Epoch",
                             disable=args.local_rank not in [-1, 0])
     set_seed(args)  # Added here for reproductibility (even between python 2 and 3)
 
     
-    model.train()
+    prompt_model.train()
     for idx, _ in enumerate(train_iterator):
         tr_loss = 0.0
         for step, batch in enumerate(train_dataloader):
 
             batch = tuple(t.to(args.device) for t in batch)
+            # print(batch)
             inputs = {'input_ids': batch[0],
                       'attention_mask': batch[1],
                       'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None,
                       'loss_ids': batch[3]
             }
             labels = batch[4]
-            logits = model(inputs)
+            logits = prompt_model(inputs)
             loss = loss_func(logits, labels)  # model outputs are always tuple in pytorch-transformers (see doc)
 
             if args.n_gpu > 1:
@@ -133,19 +134,19 @@ def train(args, train_dataset, model, tokenizer, optimizer):
                 torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
             else:
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+                torch.nn.utils.clip_grad_norm_(prompt_model.parameters(), args.max_grad_norm)
 
             tr_loss += loss.item()
             if (step + 1) % args.gradient_accumulation_steps == 0:
                 optimizer.step()
                 scheduler.step()  # Update learning rate schedule
-                model.zero_grad()
+                prompt_model.zero_grad()
                 global_step += 1
 
                 if args.local_rank in [-1, 0] and args.logging_steps > 0 and global_step % args.logging_steps == 0:
                     # Log metrics
                     if args.local_rank == -1 and args.evaluate_during_training:  # Only evaluate when single GPU otherwise metrics may not average well
-                        results = evaluate(args, model, tokenizer, checkpoint=str(global_step))
+                        results = evaluate(args, prompt_model, tokenizer, checkpoint=str(global_step))
                         for key, value in results.items():
                             tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
                             logger.info('loss %s', str(tr_loss - logging_loss))
@@ -157,11 +158,13 @@ def train(args, train_dataset, model, tokenizer, optimizer):
                 break
 
         if args.do_eval and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
-            results = evaluate(args, model, tokenizer, checkpoint=str(args.start_epoch + idx))
+            results = evaluate(args, prompt_model, tokenizer, checkpoint=str(args.start_epoch + idx))
 
             last_output_dir = os.path.join(args.output_dir, 'checkpoint-last')
             if not os.path.exists(last_output_dir):
                 os.makedirs(last_output_dir)
+            
+            model = prompt_model.plm
             model_to_save = model.module if hasattr(model,
                                                     'module') else model  # Take care of distributed/parallel training
             model_to_save.save_pretrained(last_output_dir)
@@ -183,6 +186,7 @@ def train(args, train_dataset, model, tokenizer, optimizer):
                 output_dir = os.path.join(args.output_dir, 'checkpoint-best')
                 if not os.path.exists(output_dir):
                     os.makedirs(output_dir)
+                
                 model_to_save = model.module if hasattr(model,
                                                         'module') else model  # Take care of distributed/parallel training
                 model_to_save.save_pretrained(output_dir)
@@ -347,7 +351,7 @@ def load_and_cache_examples(args, task, tokenizer, ttype='train'):
     if output_mode == "classification":
         all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.long)
 
-    dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
+    dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_loss_ids, all_label_ids)
     if (ttype == 'test'):
         return dataset, instances
     else:
@@ -582,12 +586,12 @@ def main():
     # Training
     if args.do_train:
         train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, ttype='train')
-        sys.exit()
+        # sys.exit()
         global_step, tr_loss = train(args, train_dataset, p_model, tokenizer, optimizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
     # Saving best-practices: if you use defaults names for the model, you can reload it using from_pretrained()
-    model = p_model.plm()
+    model = p_model.plm
     if args.do_train and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
         # Create output directory if needed
         if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
