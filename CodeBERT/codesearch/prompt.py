@@ -43,7 +43,7 @@ from openprompt.prompts import ManualVerbalizer
 from openprompt import PromptForClassification
 from openprompt.plms import MLMTokenizerWrapper
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 classes = ["0", "1"]
 
 logger = logging.getLogger(__name__)
