@@ -331,7 +331,7 @@ def load_and_cache_examples(args, task, tokenizer, ttype='train'):
         elif ttype == 'test':
             examples, instances = processor.get_test_examples(args.data_dir, args.test_file)
 
-        features = convert_examples_to_features(examples, label_list, args.max_seq_length, tokenizer, output_mode,
+        features = convert_examples_to_features(examples, label_list, args.max_seq_length, tokenizer, output_mode, mytemplate,
                                                 cls_token_at_end=bool(args.model_type in ['xlnet']),
                                                 # xlnet has a cls token at the end
                                                 cls_token=tokenizer.cls_token,

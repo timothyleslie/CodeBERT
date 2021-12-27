@@ -55,6 +55,7 @@ def preprocess_test_data(language, test_batch_size=1000):
             f.writelines('\n'.join(examples))
 
 if __name__ == '__main__':
-    languages = ['go', 'php', 'python', 'java', 'javascript', 'ruby']
+    # languages = ['go', 'php', 'python', 'java', 'javascript', 'ruby']
+    languages = ['python']
     for lang in languages:
         preprocess_test_data(lang)

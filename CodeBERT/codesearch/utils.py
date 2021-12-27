@@ -254,7 +254,7 @@ class CodesearchProcessor(DataProcessor):
 
 
 def convert_examples_to_features(examples, label_list, max_seq_length,
-                                 tokenizer, output_mode,
+                                 tokenizer, output_mode, template_text,
                                  cls_token_at_end=False, pad_on_left=False,
                                  cls_token='[CLS]', sep_token='[SEP]', pad_token=0,
                                  sequence_a_segment_id=0, sequence_b_segment_id=1,
@@ -269,7 +269,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
     
     label_map = {label: i for i, label in enumerate(label_list)}
 
-    template_text = 'Code: {"placeholder":"text_a", "shortenable":True} Query: {"placeholder":"text_b", "shortenable":True} They are {"mask"}.'
+    # template_text = 'Code: {"placeholder":"text_a", "shortenable":True} Query: {"placeholder":"text_b", "shortenable":True} They are {"mask"}.'
     mytemplate = ManualTemplate(tokenizer=tokenizer, text=template_text)
     wrapped_mlmTokenizer = MLMTokenizerWrapper(max_seq_length=200, tokenizer=tokenizer, truncate_method="tail")
     

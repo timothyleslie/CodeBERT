@@ -146,24 +146,24 @@ def load_and_cache_examples(args, task, tokenizer, ttype='train'):
         if ttype == 'test':
             examples, instances = processor.get_test_examples(args.data_dir, args.test_file)
     except:
-        logger.info("Creating features from dataset file at %s", args.data_dir)
-        label_list = processor.get_labels()
-        if ttype == 'train':
-            examples = processor.get_train_examples(args.data_dir, args.train_file)
-        elif ttype == 'dev':
-            examples = processor.get_dev_examples(args.data_dir, args.dev_file)
-        elif ttype == 'test':
-            examples, instances = processor.get_test_examples(args.data_dir, args.test_file)
+        # logger.info("Creating features from dataset file at %s", args.data_dir)
+        # label_list = processor.get_labels()
+        # if ttype == 'train':
+        #     examples = processor.get_train_examples(args.data_dir, args.train_file)
+        # elif ttype == 'dev':
+        #     examples = processor.get_dev_examples(args.data_dir, args.dev_file)
+        # elif ttype == 'test':
+        #     examples, instances = processor.get_test_examples(args.data_dir, args.test_file)
 
-        features = convert_examples_to_features(examples, label_list, args.max_seq_length, tokenizer, output_mode,
-                                                cls_token_at_end=bool(args.model_type in ['xlnet']),
-                                                # xlnet has a cls token at the end
-                                                cls_token=tokenizer.cls_token,
-                                                sep_token=tokenizer.sep_token,
-                                                cls_token_segment_id=2 if args.model_type in ['xlnet'] else 1,
-                                                pad_on_left=bool(args.model_type in ['xlnet']),
-                                                # pad on the left for xlnet
-                                                pad_token_segment_id=4 if args.model_type in ['xlnet'] else 0)
+        # features = convert_examples_to_features(examples, label_list, args.max_seq_length, tokenizer, output_mode,
+        #                                         cls_token_at_end=bool(args.model_type in ['xlnet']),
+        #                                         # xlnet has a cls token at the end
+        #                                         cls_token=tokenizer.cls_token,
+        #                                         sep_token=tokenizer.sep_token,
+        #                                         cls_token_segment_id=2 if args.model_type in ['xlnet'] else 1,
+        #                                         pad_on_left=bool(args.model_type in ['xlnet']),
+        #                                         # pad on the left for xlnet
+        #                                         pad_token_segment_id=4 if args.model_type in ['xlnet'] else 0)
         if args.local_rank in [-1, 0]:
             logger.info("Saving features into cached file %s", cached_features_file)
             torch.save(features, cached_features_file)

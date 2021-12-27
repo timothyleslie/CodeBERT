@@ -13,7 +13,7 @@ def main():
     parser.add_argument('--test_batch_size', type=int, default=1000)
     args = parser.parse_args()
     # languages = ['ruby', 'go', 'php', 'python', 'java', 'javascript']
-    languages = ['test']
+    languages = ['python']
 
     MRR_dict = {}
     for language in languages:
