@@ -138,7 +138,7 @@ python test.py \
 --gradient_accumulation_steps 1 \
 --overwrite_output_dir \
 --data_dir ../data/codesearch0/train_valid/$lang \
---output_dir ./models/$lang  \
+--output_dir ./models/test  \
 --model_name_or_path $pretrained_model
 
 Evalution
@@ -148,13 +148,13 @@ python prompt.py \
 --model_name_or_path microsoft/codebert-base-mlm \
 --task_name codesearch \
 --do_predict \
---output_dir ./models/$lang \
+--output_dir ./models/test \
 --data_dir ../data/codesearch/test/$lang \
 --max_seq_length 200 \
 --per_gpu_train_batch_size 64 \
 --per_gpu_eval_batch_size 64 \
 --learning_rate 1e-5 \
---num_train_epochs 8 \
+--num_train_epochs 1 \
 --test_file batch_${idx}.txt \
---pred_model_dir ./models/$lang/checkpoint-best/ \
---test_result_dir ./results/$lang/${idx}_batch_result.txt
+--pred_model_dir ./models/test/checkpoint-best/ \
+--test_result_dir ./results/test/${idx}_batch_result.txt

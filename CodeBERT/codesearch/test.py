@@ -210,7 +210,7 @@ loss_func = torch.nn.CrossEntropyLoss()
 def main():
     args.device = "cpu"
 
-    tokenizer = RobertaTokenizer.from_pretrained("models/test/")
+    tokenizer = RobertaTokenizer.from_pretrained("microsoft/codebert-base-mlm")
     processor = processors['codesearch']()
     
     # print(args.test_file)
@@ -226,9 +226,12 @@ def main():
         tokenizer = tokenizer,
     )
 
-    config = RobertaConfig.from_pretrained('models/test/config.json')
-    model = RobertaForMaskedLM.from_pretrained('models/test/pytorch_model.bin', config=config)
+    model = RobertaForMaskedLM.from_pretrained("microsoft/codebert-base-mlm")
     
+    model_to_save = model.module if hasattr(model,
+                                                'module') else model  # Take care of distributed/parallel training
+    model_to_save.save_pretrained(args.output_dir)
+    tokenizer.save_pretrained(args.output_dir)
     template_text = 'Code: {"placeholder":"text_a", "shortenable":True} Query: {"placeholder":"text_b", "shortenable":True} {"soft": "They are relevant?"} {"mask"}.'
     mytemplate = MixedTemplate(model=model, tokenizer=tokenizer, text=template_text)
 
