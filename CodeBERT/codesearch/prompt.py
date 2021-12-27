@@ -38,7 +38,7 @@ from transformers import (WEIGHTS_NAME, get_linear_schedule_with_warmup, AdamW,
 from utils import (compute_metrics, convert_examples_to_features,
                         output_modes, processors)
 
-from openprompt.prompts import ManualTemplate
+from openprompt.prompts import MixedTemplate
 from openprompt.prompts import ManualVerbalizer
 from openprompt import PromptForClassification
 from openprompt.plms import MLMTokenizerWrapper
@@ -528,8 +528,12 @@ def main():
         tokenizer = tokenizer_class.from_pretrained(tokenizer_name, do_lower_case=args.do_lower_case)
 
     # define template and verbalizer
-    template_text = 'Code: {"placeholder":"text_a", "shortenable":True} Query: {"placeholder":"text_b", "shortenable":True} They are {"mask"}.'
-    mytemplate = ManualTemplate(tokenizer=tokenizer, text=template_text)
+    template_text = 'Code: {"placeholder":"text_a", "shortenable":True} Query: {"placeholder":"text_b", "shortenable":True} {"soft": "They are relevant?"} {"mask"}.'
+    
+    model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path),
+    
+    
+    mytemplate = MixedTemplate(model=model, tokenizer=tokenizer, text=template_text)
     wrapped_mlmTokenizer = MLMTokenizerWrapper(max_seq_length=200, tokenizer=tokenizer, truncate_method="tail")
     myverbalizer = ManualVerbalizer(
         classes = classes,
@@ -539,9 +543,7 @@ def main():
         },
         tokenizer = tokenizer,
     )
-
-    model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path),
-                                        config=config)
+                                    config=config)
 
     if args.local_rank == 0:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
