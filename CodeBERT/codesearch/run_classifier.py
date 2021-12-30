@@ -93,7 +93,8 @@ def train(args, train_dataset, model, tokenizer, optimizer):
     model.train()
     for idx, _ in enumerate(train_iterator):
         tr_loss = 0.0
-        for step, batch in enumerate(train_dataloader):
+        process_bar = tqdm(train_dataloader)
+        for step, batch in enumerate(process_bar):
 
             batch = tuple(t.to(args.device) for t in batch)
             inputs = {'input_ids': batch[0],
