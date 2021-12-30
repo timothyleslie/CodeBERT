@@ -11,11 +11,13 @@ import argparse
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--test_batch_size', type=int, default=1000)
+    parser.add_argument("--prompt_type", default=None, type=str, required=True,
+                        help="Type of prompt type")
     args = parser.parse_args()
     languages = ['ruby', 'go', 'php', 'python', 'java', 'javascript']
     MRR_dict = {}
     for language in languages:
-        file_dir = './results/{}'.format(language)
+        file_dir = './{}/results/{}'.format(args.prompt_type, language)
         ranks = []
         num_batch = 0
         for file in sorted(os.listdir(file_dir)):

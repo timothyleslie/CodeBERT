@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+CodeBERT/data
+CodeBERT/codesearch/runs/
+CodeBERT/codesearch/models/
+CodeBERT/codesearch/results/

@@ -40,7 +40,7 @@ from utils import (compute_metrics, convert_examples_to_features,
 logger = logging.getLogger(__name__)
 
 MODEL_CLASSES = {'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer)}
-
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 def set_seed(args):
     random.seed(args.seed)
@@ -293,7 +293,7 @@ def load_and_cache_examples(args, task, tokenizer, ttype='train'):
     cached_features_file = os.path.join(args.data_dir, 'cached_{}_{}_{}_{}_{}'.format(
         ttype,
         file_name,
-        list(filter(None, args.model_name_or_path.split('/'))).pop(),
+        str(args.prompt_type),
         str(args.max_seq_length),
         str(task)))
 
@@ -343,6 +343,8 @@ def main():
     parser = argparse.ArgumentParser()
 
     ## Required parameters
+    parser.add_argument("--prompt_type", default=None, type=str, required=True,
+                        help="Type of prompt type")
     parser.add_argument("--data_dir", default=None, type=str, required=True,
                         help="The input data dir. Should contain the .tsv files (or other data files) for the task.")
     parser.add_argument("--model_type", default=None, type=str, required=True,
@@ -443,7 +445,8 @@ def main():
     # Setup CUDA, GPU & distributed training
     if args.local_rank == -1 or args.no_cuda:
         device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
-        args.n_gpu = torch.cuda.device_count()
+        # args.n_gpu = torch.cuda.device_count()
+        args.n_gpu = 1
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)
         device = torch.device("cuda", args.local_rank)
