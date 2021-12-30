@@ -136,7 +136,7 @@ def train(args, train_dataset, model, tokenizer, optimizer):
                         for key, value in results.items():
                             tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
                             logger.info('loss %s', str(tr_loss - logging_loss))
-                    tb_writer.add_scalar('lr', scheduler.get_lr()[0], global_step)
+                    tb_writer.add_scalar('lr', scheduler.get_last_lr()[0], global_step)
                     tb_writer.add_scalar('loss', (tr_loss - logging_loss) / args.logging_steps, global_step)
                     logging_loss = tr_loss
             if args.max_steps > 0 and global_step > args.max_steps:
