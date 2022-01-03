@@ -133,3 +133,4 @@ CodeBERT/data
 CodeBERT/codesearch/runs/
 CodeBERT/codesearch/models/
 CodeBERT/codesearch/results/
+CodeBERT/codesearch/fine-tune/
