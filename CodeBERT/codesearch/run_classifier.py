@@ -291,7 +291,7 @@ def load_and_cache_examples(args, task, tokenizer, ttype='train'):
         file_name = args.dev_file.split('.')[0]
     elif ttype == 'test':
         file_name = args.test_file.split('.')[0]
-    cached_features_file = os.path.join(args.data_dir, 'cached_{}_{}_{}_{}_{}'.format(
+    cached_features_file = os.path.join(args.data_dir, args.prompt_type, 'cached_{}_{}_{}_{}_{}'.format(
         ttype,
         file_name,
         str(args.prompt_type),
@@ -592,7 +592,11 @@ def main():
         print('testing')
         model = model_class.from_pretrained(args.pred_model_dir)
         model.to(args.device)
-        evaluate(args, model, tokenizer, checkpoint=None, prefix='', mode='test')
+        for idx in range(1, 26):
+            print('idx={}'.format(idx))
+            args.test_file = "batch_{}.txt".format(idx)
+            args.test_result_dir = "./results/{}/java/{}_batch_result.txt".format(args.prompt_type, idx)
+            evaluate(args, model, tokenizer, checkpoint=None, prefix='', mode='test')
     return results
 
 

@@ -44,7 +44,7 @@ python run_classifier.py \
 --gradient_accumulation_steps 1 \
 --overwrite_output_dir \
 --data_dir ../data/codesearch/train_valid/$lang \
---output_dir ./$prompt_type/models/$lang  \
+--output_dir ./models/$prompt_type/$lang  \
 --model_name_or_path $pretrained_model
 ```
 ## Inference and Evaluation
@@ -55,20 +55,21 @@ lang=php #programming language
 idx=0 #test batch idx
 prompt_type = fine-tune
 python run_classifier.py \
+--prompt_type $prompt_type \
 --model_type roberta \
 --model_name_or_path microsoft/codebert-base \
 --task_name codesearch \
 --do_predict \
---output_dir ./$prompt_type/models/$lang \
+--output_dir ./models/$prompt_type/$lang \
 --data_dir ../data/codesearch/test/$lang \
 --max_seq_length 200 \
 --per_gpu_train_batch_size 64 \
 --per_gpu_eval_batch_size 64 \
 --learning_rate 1e-5 \
 --num_train_epochs 16 \
---test_file batch_${idx}.txt \
---pred_model_dir ./$prompt_type/models/$lang/checkpoint-best/ \
---test_result_dir ./$prompt_type/results/$lang/${idx}_batch_result.txt
+--pred_model_dir ./models/$prompt_type/$lang/checkpoint-best/
+# --test_file batch_${idx}.txt \
+# --test_result_dir ./$prompt_type/results/$lang/${idx}_batch_result.txt
 ```
 
 Evaluation

@@ -14,10 +14,11 @@ def main():
     parser.add_argument("--prompt_type", default=None, type=str, required=True,
                         help="Type of prompt type")
     args = parser.parse_args()
-    languages = ['ruby', 'go', 'php', 'python', 'java', 'javascript']
+    # languages = ['ruby', 'go', 'php', 'python', 'java', 'javascript']
+    languages = ['python', 'java']
     MRR_dict = {}
     for language in languages:
-        file_dir = './{}/results/{}'.format(args.prompt_type, language)
+        file_dir = './results/{}/{}'.format(args.prompt_type, language)
         ranks = []
         num_batch = 0
         for file in sorted(os.listdir(file_dir)):
