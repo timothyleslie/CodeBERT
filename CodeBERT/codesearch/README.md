@@ -74,7 +74,7 @@ python run_classifier.py \
 
 Evaluation
 ```shell
-prompt_type = fine-tune
+prompt_type=fine-tune
 python mrr.py \
 --prompt_type $prompt_type
 ```
