@@ -35,10 +35,10 @@ from transformers import (WEIGHTS_NAME, get_linear_schedule_with_warmup, AdamW,
                           RobertaForMaskedLM,
                           RobertaTokenizer)
 
-from utils import (compute_metrics, convert_examples_to_features,
+from soft_utils import (compute_metrics, convert_examples_to_features,
                         output_modes, processors)
 
-from openprompt.prompts import ManualTemplate
+from openprompt.prompts import ManualTemplate, MixedTemplate
 from openprompt.prompts import ManualVerbalizer
 from openprompt import PromptForClassification
 from openprompt.plms import MLMTokenizerWrapper
@@ -113,9 +113,10 @@ def train(args, train_dataset, prompt_model, tokenizer, optimizer):
             inputs = {'input_ids': batch[0],
                       'attention_mask': batch[1],
                       'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None,
-                      'loss_ids': batch[3]
+                      'loss_ids': batch[3],
+                      'soft_token_ids':batch[4],
             }
-            labels = batch[4]
+            labels = batch[5]
             logits = prompt_model(inputs)
             loss = loss_func(logits, labels)  # model outputs are always tuple in pytorch-transformers (see doc)
 
@@ -159,7 +160,6 @@ def train(args, train_dataset, prompt_model, tokenizer, optimizer):
                 break
 
         if args.do_eval and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
-            
             results = evaluate(args, prompt_model, tokenizer, mytemplate, checkpoint=str(args.start_epoch + idx))
 
             last_output_dir = os.path.join(args.output_dir, 'checkpoint-last')
@@ -251,8 +251,9 @@ def evaluate(args, model, tokenizer, template, checkpoint=None, prefix="", mode=
                           'attention_mask': batch[1],
                           'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None,
                           # XLM don't use segment_ids
-                          'loss_ids': batch[3]}
-                labels = batch[4]
+                          'loss_ids': batch[3],
+                          'soft_token_ids':batch[4]}
+                labels = batch[5]
 
                 logits = model(inputs)
                 tmp_eval_loss = loss_func(logits, labels)
@@ -330,7 +331,7 @@ def load_and_cache_examples(args, task, tokenizer, template, ttype='train'):
         else:
             print("make cached_features_dir")
             os.makedirs(cached_features_dir)
-        logger.info("Creating features from dataset file at %s", args.data_dir)
+        logger.info("Creating features from dataset file at %s", cached_features_dir)
         label_list = processor.get_labels()
         if ttype == 'train':
             examples = processor.get_train_examples(args.data_dir, args.train_file)
@@ -356,10 +357,11 @@ def load_and_cache_examples(args, task, tokenizer, template, ttype='train'):
     all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
     all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
     all_loss_ids = torch.tensor([f.loss_ids for f in features], dtype=torch.long)
+    all_soft_token_ids = torch.tensor([f.soft_token_ids for f in features], dtype=torch.long)
     if output_mode == "classification":
         all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.long)
 
-    dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_loss_ids, all_label_ids)
+    dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_loss_ids, all_soft_token_ids, all_label_ids)
     if (ttype == 'test'):
         return dataset, instances
     else:
@@ -525,6 +527,7 @@ def main():
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
     config = config_class.from_pretrained(args.config_name if args.config_name else args.model_name_or_path)
+    # config = config_class.from_pretrained('models/MLM_base/config.json')
 
     if args.tokenizer_name:
         tokenizer_name = args.tokenizer_name
@@ -535,12 +538,10 @@ def main():
     if os.path.exists(vocab):
         tokenizer = tokenizer_class.from_pretrained(args.output_dir)
     else:
-        tokenizer = tokenizer_class.from_pretrained(tokenizer_name, do_lower_case=args.do_lower_case)
+        tokenizer = tokenizer_class.from_pretrained("models/soft-prompt/")
 
     # define template and verbalizer
-    template_text = 'Code is {"placeholder":"text_a", "shortenable":True} Query is {"placeholder":"text_b", "shortenable":True} They are relevant? {"mask"}.'
-    mytemplate = ManualTemplate(tokenizer=tokenizer, text=template_text)
-    wrapped_mlmTokenizer = MLMTokenizerWrapper(max_seq_length=200, tokenizer=tokenizer, truncate_method="tail")
+    template_text = '{"soft": "Code is"} {"placeholder":"text_a", "shortenable":True} {"soft": "Query is"} {"placeholder":"text_b", "shortenable":True} {"soft": "They are relevant?"} {"mask"}.'
     myverbalizer = ManualVerbalizer(
         classes = classes,
         label_words = {
@@ -550,9 +551,10 @@ def main():
         tokenizer = tokenizer,
     )
 
+    # model = model_class.from_pretrained('models/MLM_base/pytorch_model.bin', config=config)
     model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path),
                                         config=config)
-
+    mytemplate = MixedTemplate(model=model, tokenizer=tokenizer, text=template_text)
     if args.local_rank == 0:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
 

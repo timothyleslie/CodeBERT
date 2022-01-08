@@ -26,8 +26,62 @@ cd codesearch
 
 lang=php #fine-tuning a language-specific model for each programming language 
 pretrained_model=microsoft/codebert-base  #Roberta: roberta-base
-prompt_type=fine-tune
-python run_classifier.py \
+prompt_type=hard-prompt1
+python prompt.py \
+--prompt_type $prompt_type \
+--model_type roberta \
+--task_name codesearch \
+--do_train \
+--do_eval \
+--eval_all_checkpoints \
+--train_file train.txt \
+--dev_file valid.txt \
+--max_seq_length 200 \
+--per_gpu_train_batch_size 32 \
+--per_gpu_eval_batch_size 32 \
+--learning_rate 1e-5 \
+--num_train_epochs 16 \
+--gradient_accumulation_steps 1 \
+--overwrite_output_dir \
+--data_dir ../data/codesearch/train_valid/$lang \
+--output_dir ./models/$prompt_type/$lang  \
+--model_name_or_path $pretrained_model
+```
+## Inference and Evaluation
+
+Inference
+```shell
+lang=php #programming language
+idx=0 #test batch idx
+prompt_type = fine-tune
+python prompt.py \
+--prompt_type $prompt_type \
+--model_type roberta \
+--model_name_or_path microsoft/codebert-base \
+--task_name codesearch \
+--do_predict \
+--output_dir ./models/$prompt_type/$lang \
+--data_dir ../data/codesearch/test/$lang \
+--max_seq_length 200 \
+--per_gpu_train_batch_size 32 \
+--per_gpu_eval_batch_size 32 \
+--learning_rate 1e-5 \
+--num_train_epochs 16 \
+--pred_model_dir ./models/$prompt_type/$lang/checkpoint-best/ \
+--test_file batch_${idx}.txt \
+--test_result_dir ./$prompt_type/results/$lang/${idx}_batch_result.txt
+```
+
+Evaluation
+```shell
+prompt_type = fine-tune
+python mrr.py \
+--prompt_type $prompt_type
+```
+
+
+prompt_type=soft-prompt
+python soft_prompt.py \
 --prompt_type $prompt_type \
 --model_type roberta \
 --task_name codesearch \
@@ -46,15 +100,14 @@ python run_classifier.py \
 --data_dir ../data/codesearch/train_valid/$lang \
 --output_dir ./models/$prompt_type/$lang  \
 --model_name_or_path $pretrained_model
-```
-## Inference and Evaluation
+
 
 Inference
 ```shell
 lang=php #programming language
 idx=0 #test batch idx
-prompt_type = fine-tune
-python run_classifier.py \
+prompt_type = soft-prompt
+python prompt.py \
 --prompt_type $prompt_type \
 --model_type roberta \
 --model_name_or_path microsoft/codebert-base \
@@ -63,19 +116,11 @@ python run_classifier.py \
 --output_dir ./models/$prompt_type/$lang \
 --data_dir ../data/codesearch/test/$lang \
 --max_seq_length 200 \
---per_gpu_train_batch_size 64 \
---per_gpu_eval_batch_size 64 \
+--per_gpu_train_batch_size 128 \
+--per_gpu_eval_batch_size 128 \
 --learning_rate 1e-5 \
 --num_train_epochs 16 \
---pred_model_dir ./models/$prompt_type/$lang/checkpoint-best/
-# --test_file batch_${idx}.txt \
-# --test_result_dir ./$prompt_type/results/$lang/${idx}_batch_result.txt
+--pred_model_dir ./models/$prompt_type/$lang/checkpoint-best/ \
+--test_file batch_${idx}.txt \
+--test_result_dir ./results/$prompt_type/$lang/${idx}_batch_result.txt
 ```
-
-Evaluation
-```shell
-prompt_type = fine-tune
-python mrr.py \
---prompt_type $prompt_type
-```
-
