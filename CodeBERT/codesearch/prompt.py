@@ -324,7 +324,13 @@ def load_and_cache_examples(args, task, tokenizer, template, ttype='train'):
         if ttype == 'test':
             examples, instances = processor.get_test_examples(args.data_dir, args.test_file)
     except:
-        logger.info("Creating features from dataset file at %s", args.data_dir)
+        cached_features_dir = os.path.join(args.data_dir, args.prompt_type)
+        if os.path.exists(cached_features_dir):
+            print("cache_features_dir exists")
+        else:
+            print("make cached_features_dir")
+            os.makedirs(cached_features_dir)
+        logger.info("Creating features from dataset file at %s", cached_features_dir)
         label_list = processor.get_labels()
         if ttype == 'train':
             examples = processor.get_train_examples(args.data_dir, args.train_file)

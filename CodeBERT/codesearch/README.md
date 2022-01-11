@@ -64,7 +64,7 @@ python run_classifier.py \
 --data_dir ../data/codesearch/test/$lang \
 --max_seq_length 200 \
 --per_gpu_train_batch_size 64 \
---per_gpu_eval_batch_size 64 \
+--per_gpu_eval_batch_size 1024 \
 --learning_rate 1e-5 \
 --num_train_epochs 16 \
 --pred_model_dir ./models/$prompt_type/$lang/checkpoint-best/

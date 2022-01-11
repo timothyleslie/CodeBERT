@@ -19,7 +19,7 @@ import glob
 import logging
 import os
 import random
-
+import sys
 
 import numpy as np
 import torch
@@ -504,6 +504,7 @@ def main():
     #     tokenizer_name = 'roberta-base'
     # tokenizer = tokenizer_class.from_pretrained(tokenizer_name, do_lower_case=args.do_lower_case)
 
+    
     vocab = os.path.join(args.output_dir, 'vocab.json')
     if os.path.exists(vocab):
         tokenizer = tokenizer_class.from_pretrained(args.output_dir)
@@ -516,7 +517,7 @@ def main():
 
     # Distributed and parallel training
     model.to(args.device)
-
+    
     # Prepare optimizer and schedule (linear warmup and decay)
     no_decay = ['bias', 'LayerNorm.weight']
     optimizer_grouped_parameters = [
@@ -525,7 +526,7 @@ def main():
         {'params': [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
     ]
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
-
+    
     optimizer_last = os.path.join(checkpoint_last, 'optimizer.pt')
     if os.path.exists(optimizer_last):
         optimizer.load_state_dict(torch.load(optimizer_last))
@@ -536,7 +537,7 @@ def main():
         except ImportError:
             raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
         model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
-
+    
     if args.n_gpu > 1:
         model = torch.nn.DataParallel(model)
 
@@ -574,7 +575,7 @@ def main():
         model = model_class.from_pretrained(args.output_dir)
         tokenizer = tokenizer_class.from_pretrained(args.output_dir)
         model.to(args.device)
-
+    
     # Evaluation
     results = {}
     if args.do_eval and args.local_rank in [-1, 0]:
@@ -601,7 +602,7 @@ def main():
 
         model = model_class.from_pretrained(args.pred_model_dir)
         model.to(args.device)
-        for idx in range(3, 22):
+        for idx in range(0,1):
             print('idx={}'.format(idx))
             args.test_file = 'batch_{}.txt'.format(idx)
             args.test_result_dir = './{}/results/{}/{}_batch_result.txt'.format(args.prompt_type, "python", idx)
