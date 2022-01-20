@@ -2,6 +2,7 @@ import argparse
 import glob
 import logging
 import os
+import sys
 import random
 
 
@@ -18,7 +19,10 @@ from transformers import (WEIGHTS_NAME, get_linear_schedule_with_warmup, AdamW,
                           RobertaConfig,
                           RobertaForSequenceClassification,
                           RobertaForMaskedLM,
-                          RobertaTokenizer)
+                          RobertaTokenizer,
+                          T5Config,
+                          T5ForConditionalGeneration
+                          )
 
 
 logger = logging.getLogger(__name__)
@@ -154,6 +158,8 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
 
         wrapped_example = template.wrap_one_example(example)
         tokenized_example = wrapped_mlmTokenizer.tokenize_one_example(wrapped_example, teacher_forcing=False)
+        print(tokenized_example)
+        sys.exit()
         input_mask = list(tokenized_example['attention_mask'])
         segment_ids = [0]*len(tokenized_example['input_ids'])
 
@@ -200,7 +206,7 @@ def load_and_cache_examples(args, task, tokenizer, template, ttype='train'):
         file_name = args.dev_file.split('.')[0]
     elif ttype == 'test':
         file_name = args.test_file.split('.')[0]
-    cached_features_file = os.path.join(args.data_dir, 'cached_{}_{}_{}_{}_{}'.format(
+    cached_features_file = os.path.join(args.data_dir, args.prompt_type, 'cached_{}_{}_{}_{}_{}'.format(
         ttype,
         file_name,
         args.prompt_type,
@@ -216,7 +222,13 @@ def load_and_cache_examples(args, task, tokenizer, template, ttype='train'):
         if ttype == 'test':
             examples, instances = processor.get_test_examples(args.data_dir, args.test_file)
     except:
-        logger.info("Creating features from dataset file at %s", args.data_dir)
+        cached_features_dir = os.path.join(args.data_dir, args.prompt_type)
+        if os.path.exists(cached_features_dir):
+            print("cache_features_dir exists")
+        else:
+            print("make cached_features_dir")
+            os.makedirs(cached_features_dir)
+        logger.info("Creating features from dataset file at %s", cached_features_dir)
         label_list = processor.get_labels()
         if ttype == 'train':
             examples = processor.get_train_examples(args.data_dir, args.train_file)
@@ -281,7 +293,7 @@ loss_func = torch.nn.CrossEntropyLoss()
 def main():
     args.device = "cpu"
 
-    tokenizer = RobertaTokenizer.from_pretrained("models/MLM_base/")
+    tokenizer = RobertaTokenizer.from_pretrained("./models/T5-small/")
     processor = processors['codesearch']()
     template_text = '{"soft": "Code is"} {"placeholder":"text_a", "shortenable":True} {"soft": "Query is"} {"placeholder":"text_b", "shortenable":True} {"soft": "They are relevant?"} {"mask"}.'
     
@@ -295,8 +307,18 @@ def main():
         tokenizer = tokenizer,
     )
 
-    config = RobertaConfig.from_pretrained('models/MLM_base/config.json')
-    model = RobertaForMaskedLM.from_pretrained('models/MLM_base/pytorch_model.bin', config=config)
+    config = RobertaConfig.from_pretrained('models/T5-small/config.json')
+    model = RobertaForMaskedLM.from_pretrained('models/T5-small/pytorch_model.bin', config=config)
+    mytemplate = MixedTemplate(model=model, tokenizer=tokenizer, text=template_text)
+
+    # config = T5Config.from_pretrained('Salesforce/codet5-small')
+    # model = T5ForConditionalGeneration.from_pretrained('Salesforce/codet5-small')
+    # model_to_save = model.module if hasattr(model,
+    #                                             'module') else model  # Take care of distributed/parallel training
+    # model_to_save.save_pretrained("./models/T5-small/")
+    # tokenizer.save_pretrained("./models/T5-small/")
+
+
     mytemplate = MixedTemplate(model=model, tokenizer=tokenizer, text=template_text)
 
     p_model = PromptForClassification(plm=model, template=mytemplate, verbalizer=myverbalizer, freeze_plm=False)
@@ -327,7 +349,7 @@ def main():
     ]
     optimizer = AdamW(optimizer_grouped_parameters, lr=1e-4)
 
-    for epoch in range(10):
+    for epoch in range(1):
         tot_loss = 0
         for step, batch in enumerate(train_dataloader):
             batch = tuple(t.to(args.device) for t in batch)

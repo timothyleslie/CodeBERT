@@ -40,7 +40,7 @@ from utils import (compute_metrics, convert_examples_to_features,
 logger = logging.getLogger(__name__)
 
 MODEL_CLASSES = {'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer)}
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 def set_seed(args):
     random.seed(args.seed)
@@ -498,11 +498,17 @@ def main():
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
     config = config_class.from_pretrained(args.config_name if args.config_name else args.model_name_or_path,
                                           num_labels=num_labels, finetuning_task=args.task_name)
-    if args.tokenizer_name:
-        tokenizer_name = args.tokenizer_name
-    elif args.model_name_or_path:
-        tokenizer_name = 'roberta-base'
-    tokenizer = tokenizer_class.from_pretrained(tokenizer_name, do_lower_case=args.do_lower_case)
+    # if args.tokenizer_name:
+    #     tokenizer_name = args.tokenizer_name
+    # elif args.model_name_or_path:
+    #     tokenizer_name = 'roberta-base'
+    # tokenizer = tokenizer_class.from_pretrained(tokenizer_name, do_lower_case=args.do_lower_case)
+
+    vocab = os.path.join(args.output_dir, 'vocab.json')
+    if os.path.exists(vocab):
+        tokenizer = tokenizer_class.from_pretrained(args.output_dir)
+    else:
+        tokenizer = tokenizer_class.from_pretrained("models/MLM_base/")
     model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path),
                                         config=config)
 
@@ -592,7 +598,7 @@ def main():
         print('testing')
         model = model_class.from_pretrained(args.pred_model_dir)
         model.to(args.device)
-        for idx in range(1, 26):
+        for idx in range(4,5):
             print('idx={}'.format(idx))
             args.test_file = "batch_{}.txt".format(idx)
             args.test_result_dir = "./results/{}/java/{}_batch_result.txt".format(args.prompt_type, idx)
