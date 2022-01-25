@@ -23,7 +23,7 @@ from transformers import (WEIGHTS_NAME, get_linear_schedule_with_warmup, AdamW,
                           T5Config,
                           T5ForConditionalGeneration
                           )
-
+from openprompt.plms import T5TokenizerWrapper
 
 logger = logging.getLogger(__name__)
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
@@ -147,7 +147,9 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
     label_map = {label: i for i, label in enumerate(label_list)}
 
     # template_text = 'Code: {"placeholder":"text_a", "shortenable":True} Query: {"placeholder":"text_b", "shortenable":True} They are {"mask"}.'
-    wrapped_mlmTokenizer = MLMTokenizerWrapper(max_seq_length=200, tokenizer=tokenizer, truncate_method="tail")
+    wrapped_t5tokenizer= T5TokenizerWrapper(max_seq_length=128, decoder_max_length=3, tokenizer=tokenizer,truncate_method="head")
+
+    # wrapped_mlmTokenizer = MLMTokenizerWrapper(max_seq_length=200, tokenizer=tokenizer, truncate_method="tail")
     
     
     features = []
@@ -157,9 +159,10 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
 
 
         wrapped_example = template.wrap_one_example(example)
-        tokenized_example = wrapped_mlmTokenizer.tokenize_one_example(wrapped_example, teacher_forcing=False)
-        print(tokenized_example)
-        sys.exit()
+        # print(wrapped_example)
+        tokenized_example = wrapped_t5tokenizer.tokenize_one_example(wrapped_example, teacher_forcing=False)
+        # print(tokenized_example)
+        # sys.exit()
         input_mask = list(tokenized_example['attention_mask'])
         segment_ids = [0]*len(tokenized_example['input_ids'])
 
@@ -307,12 +310,12 @@ def main():
         tokenizer = tokenizer,
     )
 
-    config = RobertaConfig.from_pretrained('models/T5-small/config.json')
-    model = RobertaForMaskedLM.from_pretrained('models/T5-small/pytorch_model.bin', config=config)
-    mytemplate = MixedTemplate(model=model, tokenizer=tokenizer, text=template_text)
+    # config = RobertaConfig.from_pretrained('models/T5-small/config.json')
+    # model = RobertaForMaskedLM.from_pretrained('models/T5-small/pytorch_model.bin', config=config)
+    # mytemplate = MixedTemplate(model=model, tokenizer=tokenizer, text=template_text)
 
-    # config = T5Config.from_pretrained('Salesforce/codet5-small')
-    # model = T5ForConditionalGeneration.from_pretrained('Salesforce/codet5-small')
+    config = T5Config.from_pretrained('models/T5-small/config.json')
+    model = T5ForConditionalGeneration.from_pretrained('models/T5-small/pytorch_model.bin', config=config)
     # model_to_save = model.module if hasattr(model,
     #                                             'module') else model  # Take care of distributed/parallel training
     # model_to_save.save_pretrained("./models/T5-small/")
