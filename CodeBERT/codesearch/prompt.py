@@ -35,7 +35,7 @@ from transformers import (WEIGHTS_NAME, get_linear_schedule_with_warmup, AdamW,
                           RobertaForMaskedLM,
                           RobertaTokenizer)
 
-from utils import (compute_metrics, convert_examples_to_features,
+from hard_utils import (compute_metrics, convert_examples_to_features,
                         output_modes, processors)
 
 from openprompt.prompts import ManualTemplate

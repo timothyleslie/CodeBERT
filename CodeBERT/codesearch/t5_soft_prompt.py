@@ -665,7 +665,7 @@ def main():
         model = model_class.from_pretrained(args.pred_model_dir)
         p_model = PromptForClassification(plm=model, template=mytemplate, verbalizer=myverbalizer, freeze_plm=False)
         p_model.to(args.device)
-        for idx in range(15, 26):
+        for idx in range(0, 22):
             print('idx={}'.format(idx))
             args.test_file = "batch_{}.txt".format(idx)
             args.test_result_dir = "./results/{}/{}/{}_batch_result.txt".format(args.prompt_type, args.lang, idx)

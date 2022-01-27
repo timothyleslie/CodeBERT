@@ -160,12 +160,12 @@ python t5_soft_prompt.py \
 Inference
 ```shell
 lang=python #programming language
-prompt_type=soft-prompt
-python soft_prompt.py \
+prompt_type=t5small-soft-prompt
+python t5_soft_prompt.py \
 --lang $lang \
 --prompt_type $prompt_type \
 --model_type roberta \
---model_name_or_path microsoft/codebert-base \
+--model_name_or_path Salesforce/codet5-small \
 --task_name codesearch \
 --do_predict \
 --output_dir ./models/$prompt_type/$lang \
