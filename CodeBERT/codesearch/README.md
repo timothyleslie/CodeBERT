@@ -27,7 +27,7 @@ cd codesearch
 lang=php #fine-tuning a language-specific model for each programming language 
 pretrained_model=microsoft/codebert-base  #Roberta: roberta-base
 prompt_type=fine-tune
-python prompt.py \
+python run_classifier.py \
 --prompt_type $prompt_type \
 --model_type roberta \
 --task_name codesearch \
@@ -86,7 +86,7 @@ lang=python
 pretrained_model=microsoft/codebert-base
 prompt_type=soft-prompt
 python soft_prompt.py \
---lang $lang
+--lang $lang \
 --prompt_type $prompt_type \
 --model_type roberta \
 --task_name codesearch \
@@ -97,7 +97,7 @@ python soft_prompt.py \
 --dev_file valid.txt \
 --max_seq_length 200 \
 --per_gpu_train_batch_size 64 \
---per_gpu_eval_batch_size 64 \
+--per_gpu_eval_batch_size 32 \
 --learning_rate 1e-5 \
 --num_train_epochs 16 \
 --gradient_accumulation_steps 1 \
