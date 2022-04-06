@@ -8,6 +8,12 @@ We follow the official evaluation metric to calculate the Mean Reciprocal Rank (
 
 You can use the following command to download the preprocessed training and validation dataset and preprocess the test dataset by yourself. The preprocessed testing dataset is very large, so only the preprocessing script is provided.
 
+
+## Requirement
+python 3.8
+torch 1.10
+
+
 ```shell
 mkdir data data/codesearch
 cd data/codesearch
