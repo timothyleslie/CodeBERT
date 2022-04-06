@@ -15,7 +15,7 @@ def main():
                         help="Type of prompt type")
     args = parser.parse_args()
     # languages = ['ruby', 'go', 'php', 'python', 'java', 'javascript']
-    languages = ['java']
+    languages = ['php']
     MRR_dict = {}
     for language in languages:
         file_dir = './results/{}/{}'.format(args.prompt_type, language)

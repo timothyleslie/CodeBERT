@@ -370,6 +370,8 @@ def main():
     parser = argparse.ArgumentParser()
 
     ## Required parameters
+    parser.add_argument("--lang", default=None, type=str, required=True,
+                        help="Program language")
     parser.add_argument("--prompt_type", default=None, type=str, required=True,
                         help="Type of prompt type")
     parser.add_argument("--data_dir", default=None, type=str, required=True,
@@ -524,21 +526,22 @@ def main():
 
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
-    config = config_class.from_pretrained(args.config_name if args.config_name else args.model_name_or_path)
+    # config = config_class.from_pretrained(args.config_name if args.config_name else args.model_name_or_path)
 
-    if args.tokenizer_name:
-        tokenizer_name = args.tokenizer_name
-    elif args.model_name_or_path:
-        tokenizer_name = 'roberta-base'
+    # if args.tokenizer_name:
+    #     tokenizer_name = args.tokenizer_name
+    # elif args.model_name_or_path:
+    #     tokenizer_name = 'roberta-base'
 
-    vocab = os.path.join(args.output_dir, 'vocab.json')
-    if os.path.exists(vocab):
-        tokenizer = tokenizer_class.from_pretrained(args.output_dir)
-    else:
-        tokenizer = tokenizer_class.from_pretrained(tokenizer_name, do_lower_case=args.do_lower_case)
+    # vocab = os.path.join(args.output_dir, 'vocab.json')
+    # if os.path.exists(vocab):
+    #     tokenizer = tokenizer_class.from_pretrained(args.output_dir)
+    # else:
+    #     tokenizer = tokenizer_class.from_pretrained(tokenizer_name, do_lower_case=args.do_lower_case)
 
+    tokenizer = tokenizer_class.from_pretrained("./models/MLM_mlm/")
     # define template and verbalizer
-    template_text = 'Code is {"placeholder":"text_a", "shortenable":True} Query is {"placeholder":"text_b", "shortenable":True} They are relevant? {"mask"}.'
+    template_text = 'code is {"placeholder":"text_a", "shortenable":True} query is {"placeholder":"text_b", "shortenable":True} they are relevant? {"mask"}.'
     mytemplate = ManualTemplate(tokenizer=tokenizer, text=template_text)
     wrapped_mlmTokenizer = MLMTokenizerWrapper(max_seq_length=200, tokenizer=tokenizer, truncate_method="tail")
     myverbalizer = ManualVerbalizer(
@@ -550,8 +553,12 @@ def main():
         tokenizer = tokenizer,
     )
 
-    model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path),
-                                        config=config)
+    # model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path),
+    #                                     config=config)
+
+    config = config_class.from_pretrained("./models/MLM_mlm/config.json")
+    model = model_class.from_pretrained("./models/MLM_mlm/pytorch_model.bin", config=config)
+
 
     if args.local_rank == 0:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
@@ -647,7 +654,11 @@ def main():
         model = model_class.from_pretrained(args.pred_model_dir)
         p_model = PromptForClassification(plm=model, template=mytemplate, verbalizer=myverbalizer, freeze_plm=False)
         p_model.to(args.device)
-        evaluate(args, p_model, tokenizer, mytemplate, checkpoint=None, prefix='', mode='test')
+        for idx in range(7, 22):
+            print('idx={}'.format(idx))
+            args.test_file = "batch_{}.txt".format(idx)
+            args.test_result_dir = "./results/{}/{}/{}_batch_result.txt".format(args.prompt_type, args.lang, idx)
+            evaluate(args, p_model, tokenizer, mytemplate, checkpoint=None, prefix='', mode='test')
     return results
 
 

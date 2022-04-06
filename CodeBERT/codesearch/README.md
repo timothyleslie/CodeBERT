@@ -26,8 +26,9 @@ cd codesearch
 
 lang=php #fine-tuning a language-specific model for each programming language 
 pretrained_model=microsoft/codebert-base  #Roberta: roberta-base
-prompt_type=fine-tune
-python run_classifier.py \
+prompt_type=hard-prompt1
+python prompt.py \
+--lang $lang \
 --prompt_type $prompt_type \
 --model_type roberta \
 --task_name codesearch \
@@ -55,6 +56,7 @@ lang=php #programming language
 idx=0 #test batch idx
 prompt_type=fine-tune
 python run_classifier.py \
+--lang $lang \
 --prompt_type $prompt_type \
 --model_type roberta \
 --model_name_or_path microsoft/codebert-base \
@@ -184,8 +186,8 @@ python t5_soft_prompt.py \
 <!-- ################################ TEST #################################### -->
 lang=python
 pretrained_model=Salesforce/codet5-small
-prompt_type=soft-prompt
-python test.py \
+prompt_type=St
+python codebertst_test.py \
 --prompt_type $prompt_type \
 --model_type roberta \
 --task_name codesearch \
