@@ -48,3 +48,20 @@ java数据集的测试还没有跑。
 pytho数据集的测试还没跑完。(在hard-php窗口里面)
 接下来跑go数据集（在train窗口里面）
 
+## 4.7
+python数据集的测试跑完。
+接下来跑java数据集的测试（在eval窗口里面）
+go数据集的训练跑完。
+下来跑ruby数据集的训练。（在train窗口里面）
+
+ruby数据集的训练跑完。
+接下来跑JavaScript数据集的训练（在train窗口里面）
+
+## 4.8
+hard-prompt JavaScript数据集训练跑完。
+接下来跑mixed-prompt ruby数据集的训练（在train窗口里面）
+
+go的训练要迁移到/data目录下
+python的测试要迁移到/data目录下
+test/python/hard-prompt1也要迁移到/data目录下
+上述数据迁移都已完成。

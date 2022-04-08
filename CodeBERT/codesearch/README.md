@@ -90,7 +90,7 @@ python mrr.py \
 
 <!-- ################################Soft Prompt#################################### -->
 
-lang=python
+lang=ruby
 pretrained_model=microsoft/codebert-base
 prompt_type=soft-prompt
 python soft_prompt.py \
@@ -105,7 +105,7 @@ python soft_prompt.py \
 --dev_file valid.txt \
 --max_seq_length 200 \
 --per_gpu_train_batch_size 64 \
---per_gpu_eval_batch_size 32 \
+--per_gpu_eval_batch_size 64 \
 --learning_rate 1e-5 \
 --num_train_epochs 16 \
 --gradient_accumulation_steps 1 \
