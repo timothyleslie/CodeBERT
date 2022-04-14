@@ -665,11 +665,20 @@ def main():
         model = model_class.from_pretrained(args.pred_model_dir)
         p_model = PromptForClassification(plm=model, template=mytemplate, verbalizer=myverbalizer, freeze_plm=False)
         p_model.to(args.device)
-        for idx in range(0, 26):
+        batch_nums = {
+            "go": 14,
+            "java": 26,
+            "javascript": 6,
+            "php": 28,
+            "python": 22,
+            "ruby": 2
+        }
+        print(batch_nums[args.lang])
+        
+        for idx in range(0, batch_nums[args.lang]):
             print('idx={}'.format(idx))
             args.test_file = "batch_{}.txt".format(idx)
             args.test_result_dir = "./results/{}/{}/{}_batch_result.txt".format(args.prompt_type, args.lang, idx)
-
             evaluate(args, p_model, tokenizer, mytemplate, checkpoint=None, prefix='', mode='test')
         
     return results

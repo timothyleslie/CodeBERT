@@ -13,7 +13,7 @@ from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
 from torch.utils.data.distributed import DistributedSampler
 from tensorboardX import SummaryWriter
 from tqdm import tqdm, trange
-from utils import (compute_metrics, convert_examples_to_features,
+from st_utils import (compute_metrics, convert_examples_to_features,
                         output_modes, processors)
 from transformers import (WEIGHTS_NAME, get_linear_schedule_with_warmup, AdamW,
                           RobertaConfig,
@@ -26,7 +26,7 @@ from transformers import (WEIGHTS_NAME, get_linear_schedule_with_warmup, AdamW,
 from openprompt.plms import T5TokenizerWrapper
 
 logger = logging.getLogger(__name__)
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 MODEL_CLASSES = {'roberta': (RobertaConfig, RobertaForMaskedLM, RobertaTokenizer)}
 
 
@@ -125,80 +125,6 @@ parser.add_argument("--test_result_dir", default='test_results.tsv', type=str,
 args = parser.parse_args()
 
 
-class InputFeatures(object):
-    """A single set of features of data."""
-
-    def __init__(self, source_ids, label):
-        self.source_ids = source_ids
-        self.label = label
-
-def soft_convert_examples_to_features(examples, label_list, max_seq_length,
-                                 tokenizer, output_mode, template,
-                                 cls_token_at_end=False, pad_on_left=False,
-                                 cls_token='[CLS]', sep_token='[SEP]', pad_token=0,
-                                 sequence_a_segment_id=0, sequence_b_segment_id=1,
-                                 cls_token_segment_id=1, pad_token_segment_id=0,
-                                 mask_padding_with_zero=True):
-    
-    label_map = {label: i for i, label in enumerate(label_list)}
-
-    # template_text = 'Code: {"placeholder":"text_a", "shortenable":True} Query: {"placeholder":"text_b", "shortenable":True} They are {"mask"}.'
-    # wrapped_t5tokenizer= T5TokenizerWrapper(max_seq_length=200, decoder_max_length=3, tokenizer=tokenizer,truncate_method="head")
-
-    wrapped_mlmTokenizer = MLMTokenizerWrapper(max_seq_length=200, tokenizer=tokenizer, truncate_method="tail")
-    
-    features = []
-    for (ex_index, example) in enumerate(examples):
-        if ex_index % 10000 == 0:
-            logger.info("Writing example %d of %d" % (ex_index, len(examples)))
-
-
-        wrapped_example = template.wrap_one_example(example)
-        # print(wrapped_example)
-        tokenized_example = wrapped_mlmTokenizer.tokenize_one_example(wrapped_example, teacher_forcing=False)
-        # print(tokenized_example)
-        # print(len(tokenized_example['input_ids']))
-        # sys.exit()
-        # input_mask = list(tokenized_example['attention_mask'])
-        # segment_ids = [0]*len(tokenized_example['input_ids'])
-
-        # assert len(tokenized_example['input_ids']) == max_seq_length
-        # assert len(input_mask) == max_seq_length
-        # assert len(segment_ids) == max_seq_length
-        # assert len(tokenized_example['loss_ids']) == max_seq_length
-
-        if output_mode == "classification":
-            label_id = label_map[example.label]
-        elif output_mode == "regression":
-            label_id = float(example.label)
-        else:
-            raise KeyError(output_mode)
-
-        print(ex_index)
-        if ex_index < 5:
-            print(tokenized_example['decoder_input_ids'])
-            logger.info("*** Example ***")
-            logger.info("guid: %s" % (example.guid))
-            # logger.info("tokens: %s" % " ".join(
-            #     [str(x) for x in tokens]))
-            logger.info("input_ids: %s" % " ".join([str(x) for x in tokenized_example['input_ids']]))
-            logger.info("attention_mask: %s" % " ".join([str(x) for x in tokenized_example['attention_mask']]))
-            logger.info("decoder_input_ids: %s" % " ".join([str(x) for x in tokenized_example['decoder_input_ids']]))
-            # logger.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
-            # logger.info("segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
-            logger.info("loss_ids: %s" % " ".join([str(x) for x in tokenized_example['loss_ids']]))
-            logger.info("soft_token_ids: %s" % " ".join([str(x) for x in tokenized_example['soft_token_ids']]))
-            logger.info("label: %s (id = %d)" % (example.label, label_id))
-
-        features.append(
-            InputFeatures(input_ids=tokenized_example['input_ids'],
-                          attention_mask=tokenized_example['attention_mask'],
-                          loss_ids=tokenized_example['loss_ids'],
-                          soft_token_ids=tokenized_example['soft_token_ids'],
-                          label_id=label_id))
-    return features
-
-
 def load_and_cache_examples(args, task, tokenizer, template, ttype='train'):
     processor = processors[task]()
     output_mode = output_modes[task]
@@ -249,9 +175,9 @@ def load_and_cache_examples(args, task, tokenizer, template, ttype='train'):
                                                 pad_on_left=bool(args.model_type in ['xlnet']),
                                                 # pad on the left for xlnet
                                                 pad_token_segment_id=4 if args.model_type in ['xlnet'] else 0)
-        if args.local_rank in [-1, 0]:
-            logger.info("Saving features into cached file %s", cached_features_file)
-            torch.save(features, cached_features_file)
+        # if args.local_rank in [-1, 0]:
+        #     logger.info("Saving features into cached file %s", cached_features_file)
+        #     torch.save(features, cached_features_file)
     # Convert to Tensors and build dataset
     
     # for f in features:
@@ -259,11 +185,13 @@ def load_and_cache_examples(args, task, tokenizer, template, ttype='train'):
     #     print(len(f.input_mask))#200
     #     print(len(f.segment_ids))#200
     #     print(len(f.label_id))#200
-    all_source_ids = torch.tensor([f.source_ids for f in features], dtype=torch.long)
+    all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
+    all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
+    all_loss_ids = torch.tensor([f.loss_ids for f in features], dtype=torch.long)
     if output_mode == "classification":
-        all_label = torch.tensor([f.label for f in features], dtype=torch.long)
+        all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.long)
 
-    dataset = TensorDataset(all_source_ids, all_label)
+    dataset = TensorDataset(all_input_ids, all_input_mask, all_loss_ids, all_label_ids)
     if (ttype == 'test'):
         return dataset, instances
     else:
@@ -319,17 +247,7 @@ def main():
                                 num_tokens=50)
 
     p_model = PromptForClassification(plm=model, template=mytemplate, verbalizer=myverbalizer, freeze_plm=False)
-    model.to(args.device)
-    # train_dataloader = PromptDataLoader(dataset=examples, template=mytemplate, tokenizer=tokenizer, 
-    # tokenizer_wrapper_class=MLMTokenizerWrapper, max_seq_length=256,
-    # batch_size=64,shuffle=True, teacher_forcing=False, predict_eos_token=False,
-    # truncate_method="tail")
-    # print(myverbalizer.label_words_ids)
-    # logits = torch.randn(2,len(tokenizer)) # creating a pseudo output from the plm, and 
-    # print(logits)
-    # print(myverbalizer.process_logits(logits)) # see what the verbalizer do
-    # logits0 = logits[0]
-    # print(myverbalizer.process_logits(logits0))
+    p_model.to(args.device)
 
     ############# try prompt model ###########################################################################
     train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, mytemplate, ttype='train')
@@ -343,21 +261,22 @@ def main():
         {'params': [p for n, p in p_model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
     ]
     optimizer = AdamW(optimizer_grouped_parameters, lr=1e-4)
-
-    for epoch in range(1):
+    for epoch in range(10):
         tot_loss = 0
         for step, batch in enumerate(train_dataloader):
             batch = tuple(t.to(args.device) for t in batch)
-            inputs = {'source_ids': batch[0]}
+            inputs = {'input_ids': batch[0],
+                        'input_mask': batch[1],
+                        'loss_ids': batch[2]}
             
-            labels = batch[1]
+            labels = batch[3]
             # print(inputs)
 
             # inputs_batch = {'input_ids': batch[0],
             #         'attention_mask': batch[1],
             #         'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None
             #         }
-            loss, logits = model(inputs, labels)
+            logits = p_model(inputs)
             # print(labels)
             # print(logits)
             loss = loss_func(logits, labels)

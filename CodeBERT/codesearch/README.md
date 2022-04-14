@@ -30,7 +30,7 @@ We fine-tuned the model on 2*P100 GPUs.
 ```shell
 cd codesearch
 
-lang=php #fine-tuning a language-specific model for each programming language 
+lang=java #fine-tuning a language-specific model for each programming language 
 pretrained_model=microsoft/codebert-base  #Roberta: roberta-base
 prompt_type=hard-prompt1
 python prompt.py \
@@ -58,10 +58,9 @@ python prompt.py \
 
 Inference
 ```shell
-lang=php #programming language
-idx=0 #test batch idx
-prompt_type=fine-tune
-python run_classifier.py \
+lang=javascript 
+prompt_type=hard-prompt1
+python prompt.py \
 --lang $lang \
 --prompt_type $prompt_type \
 --model_type roberta \
@@ -71,7 +70,7 @@ python run_classifier.py \
 --output_dir ./models/$prompt_type/$lang \
 --data_dir ../data/codesearch/test/$lang \
 --max_seq_length 200 \
---per_gpu_train_batch_size 32 \
+--per_gpu_train_batch_size 64 \
 --per_gpu_eval_batch_size 32 \
 --learning_rate 1e-5 \
 --num_train_epochs 16 \
@@ -90,7 +89,7 @@ python mrr.py \
 
 <!-- ################################Soft Prompt#################################### -->
 
-lang=ruby
+lang=go
 pretrained_model=microsoft/codebert-base
 prompt_type=soft-prompt
 python soft_prompt.py \
@@ -117,7 +116,7 @@ python soft_prompt.py \
 
 Inference
 ```shell
-lang=python #programming language
+lang=ruby
 prompt_type=soft-prompt
 python soft_prompt.py \
 --lang $lang \
@@ -140,7 +139,7 @@ python soft_prompt.py \
 
 <!-- ################################CodeT5 Soft Prompt#################################### -->
 
-lang=python
+lang=ruby
 pretrained_model=Salesforce/codet5-small
 prompt_type=t5small-soft-prompt
 python t5_soft_prompt.py \
@@ -167,7 +166,7 @@ python t5_soft_prompt.py \
 
 Inference
 ```shell
-lang=python #programming language
+lang=php 
 prompt_type=t5small-soft-prompt
 python t5_soft_prompt.py \
 --lang $lang \
