@@ -35,10 +35,10 @@ from transformers import (WEIGHTS_NAME, get_linear_schedule_with_warmup, AdamW,
                           RobertaForMaskedLM,
                           RobertaTokenizer)
 
-from soft_utils import (compute_metrics, convert_examples_to_features,
+from st_utils import (compute_metrics, convert_examples_to_features,
                         output_modes, processors)
 
-from openprompt.prompts import ManualTemplate, MixedTemplate
+from openprompt.prompts import ManualTemplate, SoftTemplate
 from openprompt.prompts import ManualVerbalizer
 from openprompt import PromptForClassification
 from openprompt.plms import MLMTokenizerWrapper
@@ -114,11 +114,9 @@ def train(args, train_dataset, prompt_model, tokenizer, optimizer):
             # print(batch)
             inputs = {'input_ids': batch[0],
                       'attention_mask': batch[1],
-                      'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None,
-                      'loss_ids': batch[3],
-                      'soft_token_ids':batch[4],
+                      'loss_ids': batch[2],
             }
-            labels = batch[5]
+            labels = batch[3]
             logits = prompt_model(inputs)
             loss = loss_func(logits, labels)  # model outputs are always tuple in pytorch-transformers (see doc)
 
@@ -210,7 +208,6 @@ def train(args, train_dataset, prompt_model, tokenizer, optimizer):
 
     return global_step, tr_loss / global_step
 
-
 def accuracy(out, labels):
     outputs = np.argmax(out, axis=1)
     return np.sum(outputs == labels)
@@ -250,12 +247,10 @@ def evaluate(args, model, tokenizer, template, checkpoint=None, prefix="", mode=
 
             with torch.no_grad():
                 inputs = {'input_ids': batch[0],
-                          'attention_mask': batch[1],
-                          'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None,
-                          # XLM don't use segment_ids
-                          'loss_ids': batch[3],
-                          'soft_token_ids':batch[4]}
-                labels = batch[5]
+                        'attention_mask': batch[1],
+                        'loss_ids': batch[2],
+                }
+                labels = batch[3]
 
                 logits = model(inputs)
                 tmp_eval_loss = loss_func(logits, labels)
@@ -357,13 +352,11 @@ def load_and_cache_examples(args, task, tokenizer, template, ttype='train'):
     # Convert to Tensors and build dataset
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
     all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
-    all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
     all_loss_ids = torch.tensor([f.loss_ids for f in features], dtype=torch.long)
-    all_soft_token_ids = torch.tensor([f.soft_token_ids for f in features], dtype=torch.long)
     if output_mode == "classification":
         all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.long)
 
-    dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_loss_ids, all_soft_token_ids, all_label_ids)
+    dataset = TensorDataset(all_input_ids, all_input_mask, all_loss_ids, all_label_ids)
     if (ttype == 'test'):
         return dataset, instances
     else:
@@ -416,9 +409,9 @@ def main():
                         help="Batch size per GPU/CPU for evaluation.")
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1,
                         help="Number of updates steps to accumulate before performing a backward/update pass.")
-    parser.add_argument("--learning_rate", default=5e-5, type=float,
+    parser.add_argument("--learning_rate", default=0.3, type=float,
                         help="The initial learning rate for Adam.")
-    parser.add_argument("--weight_decay", default=0.0, type=float,
+    parser.add_argument("--weight_decay", default=0.1, type=float,
                         help="Weight deay if we apply some.")
     parser.add_argument("--adam_epsilon", default=1e-8, type=float,
                         help="Epsilon for Adam optimizer.")
@@ -551,7 +544,6 @@ def main():
         tokenizer = tokenizer_class.from_pretrained("models/MLM_base/")
 
     # define template and verbalizer
-    template_text = '{"soft": "Code is"} {"placeholder":"text_a", "shortenable":True} {"soft": "Query is"} {"placeholder":"text_b", "shortenable":True} {"soft": "They are relevant?"} {"mask"}.'
     myverbalizer = ManualVerbalizer(
         classes = classes,
         label_words = {
@@ -569,7 +561,9 @@ def main():
         model = model_class.from_pretrained("models/MLM_base/pytorch_model.bin", config=config)
     # model = model_class.from_pretrained('models/MLM_base/pytorch_model.bin', config=config)
     
-    mytemplate = MixedTemplate(model=model, tokenizer=tokenizer, text=template_text)
+    mytemplate = SoftTemplate(model=model, tokenizer=tokenizer,
+                                text=' The code is: {"placeholder":"text_a", "shortenable":True}, the query is: {"placeholder":"text_b", "shortenable":True}, they are {"mask"}',
+                                num_tokens=50)
     if args.local_rank == 0:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
 
@@ -674,7 +668,7 @@ def main():
             "ruby": 2
         }
         print(batch_nums[args.lang])   
-        for idx in range(26, batch_nums[args.lang]):
+        for idx in range(0, batch_nums[args.lang]):
             print('idx={}'.format(idx))
             args.test_file = "batch_{}.txt".format(idx)
             args.test_result_dir = "./results/{}/{}/{}_batch_result.txt".format(args.prompt_type, args.lang, idx)

@@ -188,10 +188,61 @@ python t5_soft_prompt.py \
 ```
 
 
+<!-- ################################ ST #################################### -->
+lang=ruby
+pretrained_model=microsoft/codebert-base
+prompt_type=ST
+python codebertST.py \
+--lang $lang \
+--prompt_type $prompt_type \
+--model_type roberta \
+--task_name codesearch \
+--do_train \
+--do_eval \
+--eval_all_checkpoints \
+--train_file train.txt \
+--dev_file valid.txt \
+--max_seq_length 200 \
+--per_gpu_train_batch_size 32 \
+--per_gpu_eval_batch_size 32 \
+--learning_rate 1e-5 \
+--num_train_epochs 16 \
+--gradient_accumulation_steps 1 \
+--overwrite_output_dir \
+--data_dir ../data/codesearch/train_valid/$lang \
+--output_dir ./models/$prompt_type/$lang  \
+--model_name_or_path $pretrained_model \
+--learning_rate 1e-4 \
+--logging_steps 200 \
+--weight_decay 0.0
+
+Inference
+```shell
+lang=ruby
+prompt_type=ST
+python codebertST.py \
+--lang $lang \
+--prompt_type $prompt_type \
+--model_type roberta \
+--model_name_or_path microsoft/codebert-base \
+--task_name codesearch \
+--do_predict \
+--output_dir ./models/$prompt_type/$lang \
+--data_dir ../data/codesearch/test/$lang \
+--max_seq_length 200 \
+--per_gpu_train_batch_size 32 \
+--per_gpu_eval_batch_size 32 \
+--learning_rate 1e-5 \
+--num_train_epochs 16 \
+--pred_model_dir ./models/$prompt_type/$lang/checkpoint-best/
+
+
+
+
 <!-- ################################ TEST #################################### -->
-lang=python
+lang=ruby
 pretrained_model=Salesforce/codet5-small
-prompt_type=St
+prompt_type=test
 python codebertst_test.py \
 --prompt_type $prompt_type \
 --model_type roberta \

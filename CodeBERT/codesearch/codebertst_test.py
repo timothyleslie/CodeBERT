@@ -175,9 +175,9 @@ def load_and_cache_examples(args, task, tokenizer, template, ttype='train'):
                                                 pad_on_left=bool(args.model_type in ['xlnet']),
                                                 # pad on the left for xlnet
                                                 pad_token_segment_id=4 if args.model_type in ['xlnet'] else 0)
-        # if args.local_rank in [-1, 0]:
-        #     logger.info("Saving features into cached file %s", cached_features_file)
-        #     torch.save(features, cached_features_file)
+        if args.local_rank in [-1, 0]:
+            logger.info("Saving features into cached file %s", cached_features_file)
+            torch.save(features, cached_features_file)
     # Convert to Tensors and build dataset
     
     # for f in features:
@@ -205,11 +205,12 @@ from io import open
 from sklearn.metrics import f1_score
 
 from openprompt.data_utils import InputExample
-from openprompt.prompts import ManualTemplate, MixedTemplate, SoftTemplate
+from openprompt.prompts import ManualTemplate, MixedTemplate, SoftTemplate, PrefixTuningTemplate
 from openprompt import PromptDataLoader
 from openprompt.prompts import ManualVerbalizer
 from openprompt.plms import MLMTokenizerWrapper
 from openprompt import PromptForClassification
+from tensorboardX import SummaryWriter
 
 classes = ["0", "1"]
 csv.field_size_limit(sys.maxsize)
@@ -243,7 +244,7 @@ def main():
     model = RobertaForMaskedLM.from_pretrained('models/MLM_base/pytorch_model.bin', config=config)
     
     mytemplate = SoftTemplate(model=model, tokenizer=tokenizer,
-                                text=' The code is: {"placeholder":"text_a"},{"mask"}',
+                                text=' The code is: {"placeholder":"text_a"}, the query is: {"placeholder":"text_b"}, they are {"mask"}',
                                 num_tokens=50)
 
     p_model = PromptForClassification(plm=model, template=mytemplate, verbalizer=myverbalizer, freeze_plm=False)
@@ -260,42 +261,33 @@ def main():
         {'params': [p for n, p in p_model.named_parameters() if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
         {'params': [p for n, p in p_model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
     ]
-    optimizer = AdamW(optimizer_grouped_parameters, lr=1e-4)
-    for epoch in range(10):
+    optimizer = AdamW(optimizer_grouped_parameters, lr=0.3)
+    log_dir = 'runs/codebertst_test-ruby0.3'
+    tb_writer = SummaryWriter(log_dir=log_dir)
+    for epoch in range(16):
         tot_loss = 0
-        for step, batch in enumerate(train_dataloader):
+        process_bar = tqdm(train_dataloader)
+        for step, batch in enumerate(process_bar):
             batch = tuple(t.to(args.device) for t in batch)
             inputs = {'input_ids': batch[0],
-                        'input_mask': batch[1],
+                        'attention_mask': batch[1],
                         'loss_ids': batch[2]}
             
             labels = batch[3]
-            # print(inputs)
-
-            # inputs_batch = {'input_ids': batch[0],
-            #         'attention_mask': batch[1],
-            #         'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None
-            #         }
             logits = p_model(inputs)
-            # print(labels)
-            # print(logits)
             loss = loss_func(logits, labels)
             loss.backward()
             tot_loss += loss.item()
             optimizer.step()
             optimizer.zero_grad()
+
+            if step+1 % 500 ==0:
+                tb_writer.add_scalar('loss', tot_loss/(step+1), step)
         print("Epoch {}, average loss: {}".format(epoch, tot_loss/(step+1)), flush=True)
-        # print(outputs)
-        # outputs = outputs.logits
-        # print(inputs['loss_ids'].size()) # [64,200]
-        # print(outputs.size()) # [64, 200, 50265]
-        # # print(torch.where(inputs['loss_ids']>0))
-        # # print(outputs)
-        # outputs_at_mask = outputs[torch.where(inputs['loss_ids']>0)]
-        # print(outputs_at_mask)
-        # loss = loss_func(logits, labels)
-        # print(loss)
-    sys.exit()
+    model = p_model.plm
+    model_to_save = model.module if hasattr(model,
+                                            'module') else model  # Take care of distributed/parallel training
+    model_to_save.save_pretrained("./models/test/")
 
 
     

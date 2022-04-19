@@ -1,18 +1,45 @@
+fine-tune paper:
+javascript mrr: 0.7059
+ruby mrr: 0.6926
+go mrr: 0.8400
+php mrr: 0.7062
+python mrr: 0.8685
+java mrr: 0.7484
+
 fine-tune result:
 python mrr: 0.8734145401935886
 java mrr: 0.7289694017047746
 
 hard-prompt result：
-python mrr：
-php mrr：0.6933318266664722
+javascript mrr: 0.6797923324620839
+ruby mrr: 0.6449296143791
+go mrr: 0.7993819881914143
+php mrr: 0.6933318266664722
+python mrr: 0.8652981265436085
+java mrr: 0.6948145569124093
 
 soft-prompt result:
 python mrr: 0.8672667938799072
 java mrr: 0.7185883369181556
+
+javascript mrr: 0.6872359576655199
+ruby mrr: 0.6692308652977674
+go mrr: 0.796069511500527
+php mrr: 0.6313863816422294
+python mrr: 0.7185883369181556
+java mrr: 0.7185883369181556
+javascript mrr: 0.6872359576655199
+
 
 soft-prompt_v2 result:
 python mrr: 0.8590382990315889
 
 
 T5+soft-prompt result:
+javascript mrr: 0.4530010000358889
+ruby mrr: 0.5455417130768582
+go mrr: 0.6594699914608547
+php mrr: 0.4997227541283988
 python mrr: 0.5967964600174649
+java mrr: 0.5551064528518945
+javascript mrr: 0.4530010000358889

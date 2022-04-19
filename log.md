@@ -65,3 +65,42 @@ go的训练要迁移到/data目录下
 python的测试要迁移到/data目录下
 test/python/hard-prompt1也要迁移到/data目录下
 上述数据迁移都已完成。
+
+midxed-prompt ruby的训练跑完。
+接下来跑mixed-prompt JavaScript的训练。
+
+
+## 4.9
+mixed-prompt JavaScript训练跑完。
+接下来跑mixed-prompt php的训练
+
+mixed-prompt全部数据集都已经跑完。
+接下来跑hard-prompt的ruby、go、JavaScript测试，分别在eval-XX窗口中
+同时还有之前java的测试还没跑完。
+
+之前再测t5-java的mrr值时机器老是出bug，现在把它下载到本地测试一下。
+
+跑t5small+mixedpropmt在JavaScript数据集的训练（在train窗口）
+跑t5small+mixedpropmt在go数据集的训练（在train-go窗口）
+
+## 4.10
+接下来跑t5small+mixedprompt的go的测试（在eval窗口）
+跑t5small+mixedprompt的JavaScript的测试（在eval-JavaScript窗口）
+
+接下来跑t5small+mixedprompt的php训练（在train窗口）
+跑t5small+mixedprompt的ruby训练（在train-ruby窗口）
+
+## 4.13
+已经把t5+mixedprompt的所有训练和测试跑完。
+接下来跑bert+mixed的所有测试。其中php在eval窗口里。
+
+## 4.14
+看一下这个tensorboard是什么原因。
+写一下st的训练代码。
+
+## 4.15
+排查了一下tensorboard的原因，把tr-loss=0这句代码删掉就没问题了。
+st的训练代码已经写好了。
+
+跑了ruby的训练代码。
+接下来跑JavaScript的训练代码和ruby的测试代码。
