@@ -674,7 +674,7 @@ def main():
             "ruby": 2
         }
         print(batch_nums[args.lang])   
-        for idx in range(26, batch_nums[args.lang]):
+        for idx in range(0, batch_nums[args.lang]):
             print('idx={}'.format(idx))
             args.test_file = "batch_{}.txt".format(idx)
             args.test_result_dir = "./results/{}/{}/{}_batch_result.txt".format(args.prompt_type, args.lang, idx)

@@ -94,3 +94,11 @@ if __name__ == '__main__':
 	my_train_model = TrainWholeModel(my_args)
 	my_train_model.train()
 
+
+# python main.py \
+# --pretrained_bert_path  huggingface/CodeBERTa-small-v1 \
+# --model_class InputMemory \
+# --dataset_name ruby \
+# --memory_num 50 \
+# --nvidia_number 1 \
+# --train_batch_size 32 

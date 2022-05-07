@@ -30,10 +30,10 @@ We fine-tuned the model on 2*P100 GPUs.
 ```shell
 cd codesearch
 
-lang=java #fine-tuning a language-specific model for each programming language 
-pretrained_model=microsoft/codebert-base  #Roberta: roberta-base
-prompt_type=hard-prompt1
-python prompt.py \
+lang=python
+pretrained_model=microsoft/codebert-base 
+prompt_type=fine-tune
+python run_classifier.py \
 --lang $lang \
 --prompt_type $prompt_type \
 --model_type roberta \
@@ -47,7 +47,7 @@ python prompt.py \
 --per_gpu_train_batch_size 64 \
 --per_gpu_eval_batch_size 64 \
 --learning_rate 1e-5 \
---num_train_epochs 16 \
+--num_train_epochs 8 \
 --gradient_accumulation_steps 1 \
 --overwrite_output_dir \
 --data_dir ../data/codesearch/train_valid/$lang \
@@ -58,9 +58,9 @@ python prompt.py \
 
 Inference
 ```shell
-lang=javascript 
-prompt_type=hard-prompt1
-python prompt.py \
+lang=php 
+prompt_type=fine-tune
+python run_classifier.py \
 --lang $lang \
 --prompt_type $prompt_type \
 --model_type roberta \
@@ -71,7 +71,7 @@ python prompt.py \
 --data_dir ../data/codesearch/test/$lang \
 --max_seq_length 200 \
 --per_gpu_train_batch_size 64 \
---per_gpu_eval_batch_size 32 \
+--per_gpu_eval_batch_size 64 \
 --learning_rate 1e-5 \
 --num_train_epochs 16 \
 --pred_model_dir ./models/$prompt_type/$lang/checkpoint-best/
@@ -262,3 +262,6 @@ python codebertst_test.py \
 --data_dir ../data/codesearch0/train_valid/$lang \
 --output_dir ./models/$prompt_type/$lang  \
 --model_name_or_path $pretrained_model
+
+
+

@@ -368,9 +368,6 @@ class TrainWholeModel:
         
         train_dataset = TextDataset(
             self.tokenizer, self.text_max_len - self.memory_num, "./dataset/" + self.dataset_name + "/train.jsonl")
-
-        print(len(train_dataset))
-        exit()
         
         # instance attribute
         self.model = None
@@ -425,9 +422,6 @@ class TrainWholeModel:
         # 读取数据
         train_dataset = TextDataset(
             self.tokenizer, self.text_max_len - self.memory_num, "./dataset/" + self.dataset_name + "/train.jsonl")
-
-        print(len(train_dataset))
-        exit()
         
         for epoch in range(0, self.num_train_epochs):
 

@@ -104,3 +104,38 @@ st的训练代码已经写好了。
 
 跑了ruby的训练代码。
 接下来跑JavaScript的训练代码和ruby的测试代码。
+
+## 4.22
+跑fine-tune php 16个epoch的测试（在eval窗口）
+同样，跑go的测试，在eval-go窗口
+
+跑ruby的训练 8个epoch train-ruby窗口（已跑完）
+
+跑JavaScript的训练 8个epoch，train窗口
+
+## 4.23
+JavaScript的训练跑完。
+接下来跑JavaScript的测试。
+跑go的测试，在eval-go窗口。
+
+
+## 4.25
+- [ ] see the mrr value of fine-tune 8epochs 
+- [ ] train 16epochs of fine-tune model(ruby, javascript finished)
+
+## 4.30
+fine-tune-8:
+
+model:no python
+
+reuslt: no java python
+
+fine-tune:   
+model: all 
+
+result: all
+
+把16个epoch的python model移到外面
+训练8个epoch的python model
+
+

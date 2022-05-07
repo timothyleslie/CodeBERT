@@ -134,3 +134,7 @@ CodeBERT/codesearch/runs/
 CodeBERT/codesearch/models/
 CodeBERT/codesearch/results/
 CodeBERT/codesearch/fine-tune/
+CodeBERT/soft-prompt/dataset
+CodeBERT/soft-prompt/tokenizer
+CodeBERT/soft-prompt/model
+CodeBERT/soft-prompt/last_model

@@ -40,7 +40,7 @@ from utils import (compute_metrics, convert_examples_to_features,
 logger = logging.getLogger(__name__)
 
 MODEL_CLASSES = {'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer)}
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 def set_seed(args):
     random.seed(args.seed)
@@ -305,6 +305,12 @@ def load_and_cache_examples(args, task, tokenizer, ttype='train'):
         if ttype == 'test':
             examples, instances = processor.get_test_examples(args.data_dir, args.test_file)
     except:
+        cached_features_dir = os.path.join(args.data_dir, args.prompt_type)
+        if os.path.exists(cached_features_dir):
+            print("cache_features_dir exists")
+        else:
+            print("make cached_features_dir")
+            os.makedirs(cached_features_dir)
         logger.info("Creating features from dataset file at %s", args.data_dir)
         label_list = processor.get_labels()
         if ttype == 'train':
@@ -344,6 +350,8 @@ def main():
     parser = argparse.ArgumentParser()
 
     ## Required parameters
+    parser.add_argument("--lang", default=None, type=str, required=True,
+                        help="Program language")
     parser.add_argument("--prompt_type", default=None, type=str, required=True,
                         help="Type of prompt type")
     parser.add_argument("--data_dir", default=None, type=str, required=True,
@@ -598,10 +606,19 @@ def main():
         print('testing')
         model = model_class.from_pretrained(args.pred_model_dir)
         model.to(args.device)
-        for idx in range(4,5):
+        batch_nums = {
+            "go": 14,
+            "java": 26,
+            "javascript": 6,
+            "php": 28,
+            "python": 22,
+            "ruby": 2
+        }
+        print(batch_nums[args.lang])   
+        for idx in range(0, batch_nums[args.lang]):
             print('idx={}'.format(idx))
             args.test_file = "batch_{}.txt".format(idx)
-            args.test_result_dir = "./results/{}/java/{}_batch_result.txt".format(args.prompt_type, idx)
+            args.test_result_dir = "./results/{}/{}/{}_batch_result.txt".format(args.prompt_type, args.lang, idx)
             evaluate(args, model, tokenizer, checkpoint=None, prefix='', mode='test')
     return results
 

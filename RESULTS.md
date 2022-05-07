@@ -10,6 +10,13 @@ fine-tune result:
 python mrr: 0.8734145401935886
 java mrr: 0.7289694017047746
 
+
+fine-tune-8 result:
+ruby mrr: 0.6916306727620666
+go mrr: 0.8282576418545229
+php mrr: 0.005822356678600311
+javascript mrr: 0.6493786058527732
+
 hard-prompt result：
 javascript mrr: 0.6797923324620839
 ruby mrr: 0.6449296143791
