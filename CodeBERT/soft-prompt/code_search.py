@@ -390,7 +390,7 @@ class TrainWholeModel:
             # 优化器，调参用的
             parameters_dict_list = [
                 # 这几个一样
-                {'params': self.model.bert_model.parameters(), 'lr': 5e-5},
+                {'params': self.model.bert_model.parameters(), 'lr': self.args.learning_rate},
             ]
         elif self.model_class == 'InputMemory':
             self.model = InputMemory(config=self.config)
@@ -400,10 +400,10 @@ class TrainWholeModel:
             
             parameters_dict_list = [
                 # 这几个一样
-                {'params': self.model.bert_model.parameters(), 'lr': 5e-5},
+                {'params': self.model.bert_model.parameters(), 'lr': self.args.learning_rate},
                 # 这几个一样
-                {'params': self.model.memory_for_question, 'lr': 5e-5},
-                {'params': self.model.memory_for_answer, 'lr': 5e-5},
+                {'params': self.model.memory_for_question, 'lr': self.args.learning_rate},
+                {'params': self.model.memory_for_answer, 'lr': self.args.learning_rate},
             ]
         else:
             raise Exception("No this model class")
@@ -411,7 +411,7 @@ class TrainWholeModel:
         self.model.to(self.device)
         self.model.train()
 
-        optimizer = torch.optim.Adam(parameters_dict_list, lr=5e-5)
+        optimizer = torch.optim.Adam(parameters_dict_list, lr=self.args.learning_rate)
 
         # 准备训练，最优模型先设置为无
         previous_best_mrr = -1

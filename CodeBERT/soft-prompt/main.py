@@ -70,6 +70,7 @@ def read_arguments():
 	parser.add_argument("--ranking_candidate_num", default=5, type=int)
 	parser.add_argument("--label_num", default=2, type=int)  # !!!
 	parser.add_argument("--num_train_epochs", "-e", type=int, default=50)
+	parser.add_argument("--learning_rate", default=5e-5, type=float)
 
 	parser.add_argument("--val_candidate_num", default=100,
 						type=int, help="candidates num for ranking")
@@ -96,9 +97,10 @@ if __name__ == '__main__':
 
 
 # python main.py \
-# --pretrained_bert_path  huggingface/CodeBERTa-small-v1 \
+# --pretrained_bert_path  microsoft/codebert-base \
 # --model_class InputMemory \
-# --dataset_name ruby \
+# --dataset_name go \
 # --memory_num 50 \
-# --nvidia_number 1 \
-# --train_batch_size 32 
+# --nvidia_number 0 \
+# --train_batch_size 32 \
+# --learning_rate 5e-5
