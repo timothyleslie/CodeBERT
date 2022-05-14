@@ -5,7 +5,7 @@ import torch
 from torch.backends import cudnn
 import random
 import numpy as np
-
+import sys
 from code_search import TrainWholeModel
 
 
@@ -82,11 +82,33 @@ def read_arguments():
 	return args
 
 
+class Logger(object):
+    def __init__(self, fileN='Default.log'):
+        self.terminal = sys.stdout
+        sys.stdout = self
+        self.log = open(fileN, 'w')
+
+    def write(self, message):
+        '''print实际相当于sys.stdout.write'''
+        self.terminal.write(message)
+        self.log.write(message)
+
+    def reset(self):
+        self.log.close()
+        sys.stdout=self.terminal
+    
+    def flush(self):
+        pass
+
 if __name__ == '__main__':
 	my_args = read_arguments()
 
+
 	# 创建路径
 	create_dir(my_args)
+
+	log_dir = './outputs/' + my_args.dataset_name + '-' + str(my_args.memory_num) + '-' + str(my_args.learning_rate) + '.txt'
+	logger = Logger(log_dir)
 
 	# 设置随机种子
 	set_seed(my_args.seed)
@@ -95,12 +117,15 @@ if __name__ == '__main__':
 	my_train_model = TrainWholeModel(my_args)
 	my_train_model.train()
 
+	logger.reset()
 
 # python main.py \
 # --pretrained_bert_path  microsoft/codebert-base \
 # --model_class InputMemory \
-# --dataset_name go \
-# --memory_num 50 \
-# --nvidia_number 0 \
-# --train_batch_size 32 \
-# --learning_rate 5e-5
+# --dataset_name javascript \
+# --memory_num 100 \
+# --nvidia_number 1 \
+# --train_batch_size 16 \
+# --learning_rate 5e-5 \
+# --save_model_dict ./model \
+# --last_model_dict ./last_model

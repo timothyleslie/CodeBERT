@@ -13,6 +13,7 @@ import sys
 from tqdm import tqdm
 import logging
 import json
+from tensorboardX import SummaryWriter
 
 from my_dataset import TBAClassifyDataset, QAMemClassifyDataset, QAClassifyDataset, CrossClassifyDataset
 import torch.nn.functional as F
@@ -376,9 +377,9 @@ class TrainWholeModel:
         model_save_name = self.model_save_prefix + \
             self.model_class + "_" + self.dataset_name
         # best model save path
-        model_save_path = self.save_model_dict + "/" + model_save_name
+        model_save_path = self.save_model_dict + "/pt" + str(self.args.memory_num) + "/" +  model_save_name
         # last model save path
-        last_model_save_path = self.last_model_dict + "/" + model_save_name
+        last_model_save_path = self.last_model_dict + "/pt" + str(self.args.memory_num) + "/" + model_save_name
 
         # 创建模型，根据 model_class 的选择
         if self.model_class == 'BiEncoder':
@@ -407,6 +408,10 @@ class TrainWholeModel:
             ]
         else:
             raise Exception("No this model class")
+
+        log_dir = 'runs/pt{}/{}'.format(self.args.memory_num, self.args.dataset_name + '-' 
+                                        + str(self.args.learning_rate))
+        tb_writer = SummaryWriter(log_dir=log_dir)
 
         self.model.to(self.device)
         self.model.train()
@@ -475,11 +480,13 @@ class TrainWholeModel:
                     "epoch {:>3d} loss {:.4f}".format(epoch + 1, train_loss / now_batch_num))
 
             gc.collect()
-
+            
+            tb_writer.add_scalar('loss', train_loss / now_batch_num, epoch+1)
+            
             this_best_mrr = self.do_val()
-
             print(f"This mrr {this_best_mrr}, previous_best_mrr {previous_best_mrr}")
             
+            tb_writer.add_scalar('mrr', this_best_mrr, epoch+1)
             # 存储最优模型
             if this_best_mrr > previous_best_mrr:
                 previous_best_mrr = this_best_mrr
@@ -517,7 +524,10 @@ class TrainWholeModel:
         final_test_result = self.do_test()
         print(
             "#" * 15 + f" This stage result is {final_test_result}. " + "#" * 15)
-
+        with open('results.txt', 'a+', encoding='utf-8') as f_result:
+            f_result.write(self.args.dataset_name + '-'
+                            + str(self.args.learning_rate) + ': '
+                            + str(final_test_result) + '\n')
     def do_val(self):
         val_dataset = TextDataset(
             self.tokenizer, self.text_max_len - self.memory_num, "./dataset/" + self.dataset_name + "/valid.jsonl")
